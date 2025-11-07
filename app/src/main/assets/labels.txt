@@ -1,0 +1,4 @@
+food_waste
+metal
+paper
+plastic
