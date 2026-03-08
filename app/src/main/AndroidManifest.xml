@@ -9,6 +9,8 @@
     <!-- Declaring that the app will use camera, but not strictly required, just that the scanning wont work-->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"

@@ -16,20 +16,25 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import com.example.smartwaste.screens.ProfileScreen
+import com.example.smartwaste.screens.RegistrationScreen
 import com.example.smartwaste.ui.theme.SmartWasteTheme
+import com.google.firebase.Firebase
+import com.google.firebase.auth.auth
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -42,13 +47,26 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             SmartWasteTheme {
+                var isLoggedIn by remember {
+                    mutableStateOf(Firebase.auth.currentUser != null)
+                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
+                    if (isLoggedIn) {
                     MainScreen(
-                        classifier = ImageClassifier(applicationContext)
-                    )
+                        classifier = ImageClassifier(applicationContext),
+                        onLogout = {
+                            Firebase.auth.signOut()
+                            isLoggedIn = false
+                        }
+
+                    )} else {
+                        RegistrationScreen(onRegistrationSuccess = {
+                            isLoggedIn = true
+                        })
+                    }
                 }
             }
         }
@@ -57,10 +75,50 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(classifier: ImageClassifier) {
+fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
+    var currentScreen by remember {mutableStateOf("scanner")}
+
+    // Screen layout
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(if (currentScreen== "scanner")"Smart Waste disposal app" else "My Profile") },
+                navigationIcon = {
+                    if (currentScreen == "profile") {
+                        IconButton(onClick = { currentScreen = "scanner"}) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                },
+                actions = {
+                    if (currentScreen == "scanner") {
+                        IconButton(onClick = { currentScreen = "profile"}) {
+                            Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
+                        }
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            )
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.padding(paddingValues)) {
+            if (currentScreen == "scanner") {
+                Scanner(classifier = classifier)
+            } else {
+                ProfileScreen ( onLogout = onLogout )
+            }
+        }
+
+    }
+}
+
+@Composable
+fun Scanner(classifier: ImageClassifier) {
     val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
-    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var classificationResult by remember { mutableStateOf<String?>(null) }
     var showDialog by remember { mutableStateOf(false) }
 
@@ -70,7 +128,7 @@ fun MainScreen(classifier: ImageClassifier) {
             if (success) {
                 imageUri?.let { uri ->
                     // Convert the image URI to a Bitmap
-                    val bitmap: Bitmap = if (Build.VERSION.SDK_INT <28) {
+                    val bitmap: Bitmap = if (Build.VERSION.SDK_INT < 28) {
                         @Suppress("DEPRECATION") //This is deprecated, but we're using an old API
                         MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
                     } else {
@@ -91,18 +149,6 @@ fun MainScreen(classifier: ImageClassifier) {
             }
         }
     )
-    if (showDialog) {
-        AlertDialog(
-            onDismissRequest = { showDialog = false },
-            title = { Text("Classification Result") },
-            text = { Text(classificationResult ?: "No result") },
-            confirmButton = {
-                Button(onClick = { showDialog = false }) {
-                    Text("OK")
-                }
-            }
-        )
-    }
 
     // This asks the user for permission to use the camera
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -117,85 +163,72 @@ fun MainScreen(classifier: ImageClassifier) {
         }
     )
 
-    // Screen layout
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Smart Waste disposal app") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            )
-        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
 
-            Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-            // Points display
-            Text(
-                text = "Your Points: 0",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+        // Points display
+        Text(
+            text = "Your Points: 0",
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
 
-            Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.weight(1f))
 
-            // Scan button
-            Button(
-                onClick = {
-                    // Check if we have permission. If not, ask for it.
-                    // If we do, launch the camera directly.
-                    when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
-                        PackageManager.PERMISSION_GRANTED -> {
-                            imageUri = context.createImageUri() // Get a new URI
-                            cameraLauncher.launch(imageUri)
-                        }
-                        else -> {
-                            permissionLauncher.launch(Manifest.permission.CAMERA)
-                        }
+        // Scan button
+        Button(
+            onClick = {
+                // Check if we have permission. If not, ask for it.
+                // If we do, launch the camera directly.
+                when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
+                    PackageManager.PERMISSION_GRANTED -> {
+                        imageUri = context.createImageUri() // Get a new URI
+                        cameraLauncher.launch(imageUri)
                     }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_camera_alt),
-                    contentDescription = "Scan Icon",
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = " Scan Waste",
-                    fontSize = 18.sp,
-                    modifier = Modifier.padding(start = 8.dp)
-                )
-            }
 
-            // Guides Button -- For future implementation
-            OutlinedButton(
-                onClick = {
-                    // Placeholder
-                    Toast.makeText(context, "Guides coming soon!", Toast.LENGTH_SHORT).show()
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-            ) {
-                Text(text = "Browse Disposal Guides", fontSize = 18.sp)
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
+                    else -> {
+                        permissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_camera_alt),
+                contentDescription = "Scan Icon",
+                modifier = Modifier.size(24.dp)
+            )
+            Text(
+                text = " Scan Waste",
+                fontSize = 18.sp,
+                modifier = Modifier.padding(start = 8.dp)
+            )
         }
+
+        // Guides Button -- For future implementation
+        OutlinedButton(
+            onClick = {
+                // Placeholder
+                Toast.makeText(context, "Guides coming soon!", Toast.LENGTH_SHORT).show()
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp)
+        ) {
+            Text(text = "Browse Disposal Guides", fontSize = 18.sp)
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
     }
 
     // Results
@@ -231,7 +264,7 @@ fun MainScreen(classifier: ImageClassifier) {
     }
 }
 
-// Helper function to create a new file URI for the camera
+    // Helper function to create a new file URI for the camera
 private fun Context.createImageUri(): Uri {
     val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
     val imageFile = File.createTempFile(
@@ -246,10 +279,3 @@ private fun Context.createImageUri(): Uri {
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun MainScreenPreview() {
-    SmartWasteTheme {
-        MainScreen(classifier = ImageClassifier(LocalContext.current))
-    }
-}
