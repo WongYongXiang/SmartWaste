@@ -16,9 +16,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +38,7 @@ import com.example.smartwaste.screens.RegistrationScreen
 import com.example.smartwaste.ui.theme.SmartWasteTheme
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
+import com.google.firebase.firestore.firestore
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -50,22 +54,67 @@ class MainActivity : ComponentActivity() {
                 var isLoggedIn by remember {
                     mutableStateOf(Firebase.auth.currentUser != null)
                 }
+                var userRole by remember {
+                    mutableStateOf(if (isLoggedIn) "Loading" else "Unauthenticated")
+                }
+
+                LaunchedEffect(isLoggedIn) {
+                    if (isLoggedIn) {
+                        userRole = "Loading"
+                        val uid = Firebase.auth.currentUser?.uid
+                        if (uid != null) {
+                            Firebase.firestore.collection("users").document(uid).get()
+                                .addOnSuccessListener {document ->
+                                    if (document != null && document.exists()) {
+                                        userRole = document.getString("role")?:"public"
+                                    } else {
+                                        userRole = "public"
+                                    }
+                                }
+                                .addOnFailureListener {
+                                    userRole = "public"
+                                }
+                        }
+                        else{
+                            userRole = "Unauthenticated"
+                        }
+                    } else {
+                        userRole = "Unauthenticated"
+                    }
+                }
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (isLoggedIn) {
-                    MainScreen(
-                        classifier = ImageClassifier(applicationContext),
-                        onLogout = {
-                            Firebase.auth.signOut()
-                            isLoggedIn = false
+                    when (userRole) {
+                        "Loading" -> {
+                            Box(modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
                         }
-
-                    )} else {
-                        RegistrationScreen(onRegistrationSuccess = {
-                            isLoggedIn = true
-                        })
+                        "Unauthenticated" -> {
+                            RegistrationScreen (onRegistrationSuccess = {
+                                isLoggedIn = true
+                            })
+                        }
+                        "staff" -> {
+                            StaffDashBoard(
+                                onLogout = {
+                                    Firebase.auth.signOut()
+                                    isLoggedIn = false
+                                }
+                            )
+                        }
+                        else -> {
+                            MainScreen(
+                                classifier = ImageClassifier(applicationContext),
+                                onLogout = {
+                                    Firebase.auth.signOut()
+                                    isLoggedIn = false
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -278,4 +327,39 @@ private fun Context.createImageUri(): Uri {
         Objects.requireNonNull(imageFile)
     )
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StaffDashBoard(onLogout: () -> Unit){
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Staff Dashboard")},
+                actions = {
+                    IconButton(onClick = onLogout) {
+                        Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("Welcome", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Routing system", fontSize = 16.sp)
+        }
+    }
+}
+
 

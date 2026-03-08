@@ -7,17 +7,23 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.firestore.firestore
 
 @Composable
 fun RegistrationScreen(onRegistrationSuccess: () -> Unit){
     var email by remember { mutableStateOf("")}
     var username by remember { mutableStateOf("")}
     var password by remember { mutableStateOf("")}
+    var passwordVisible by remember { mutableStateOf(false)}
+    var confirmPassword by remember { mutableStateOf("")}
+    var confirmPasswordVisible by remember { mutableStateOf(false)}
     var errorMessage by remember { mutableStateOf<String?>(null)}
     var isLoginMode by remember { mutableStateOf(true)}
     val auth = Firebase.auth
@@ -55,8 +61,28 @@ fun RegistrationScreen(onRegistrationSuccess: () -> Unit){
             value = password,
             onValueChange = { password = it},
             label = { Text("Password")},
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                TextButton(onClick = {passwordVisible = !passwordVisible}){
+                    Text(text = if (passwordVisible) "Hide" else "Show")
+                }
+            },
             modifier = Modifier.fillMaxWidth()
         )
+        if (!isLoginMode) {
+            OutlinedTextField(
+                value = confirmPassword,
+                onValueChange = {confirmPassword = it},
+                label = {Text("Confirm Password")},
+                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    TextButton(onClick = {confirmPasswordVisible = !confirmPasswordVisible}){
+                        Text(text = if (confirmPasswordVisible) "Hide" else "Show")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
 
         if (errorMessage != null) {
             Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
@@ -84,20 +110,41 @@ fun RegistrationScreen(onRegistrationSuccess: () -> Unit){
                         if (username.isBlank()) {
                             errorMessage = "Please enter username"
                         }
+                        else if (password != confirmPassword) {
+                            errorMessage = "Passwords do not match"
+                        }
                         else if (password.length < 6) {
-                            errorMessage = "Password must be at least 6 characters."
+                            errorMessage = "Password must be at least 6 characters"
                         } else {
                             auth.createUserWithEmailAndPassword(email, password)
                                 .addOnCompleteListener { task ->
                                     if (task.isSuccessful) {
                                         val user = auth.currentUser
-                                        val profileUpdates = userProfileChangeRequest{
-                                            displayName = username
+                                        val db = Firebase.firestore
+                                        val userData = hashMapOf(
+                                            "username" to username,
+                                            "email" to email,
+                                            "role" to "public" // Default the user role to public (can go to firebase console to change the roles)
+                                        )
+
+                                        user?.uid?.let { uid ->
+                                            db.collection("users").document(uid)
+                                                .set(userData)
+                                                .addOnSuccessListener {
+                                                    val profileUpdates = userProfileChangeRequest{
+                                                        displayName = username
+                                                    }
+                                                    user.updateProfile(profileUpdates)
+                                                        .addOnCompleteListener {
+                                                            onRegistrationSuccess()// Go to Main Screen
+                                                        }
+                                                }
+                                                .addOnFailureListener { e ->
+                                                    errorMessage = "user data save failed: ${e.message}"
+                                                }
                                         }
-                                        user?.updateProfile(profileUpdates)
-                                            ?.addOnCompleteListener {
-                                                onRegistrationSuccess// Go to Main Screen
-                                            }
+
+
                                     } else {
                                         errorMessage = task.exception?.message
                                     }
