@@ -17,8 +17,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExitToApp
@@ -327,10 +328,40 @@ private fun Context.createImageUri(): Uri {
         Objects.requireNonNull(imageFile)
     )
 }
+// For simulation of waste bin
+data class WasteBin(
+    val id: String,
+    val latitude: Double,
+    val longitude: Double,
+    val fillLevel: Int
+)
 
+fun generateSyntheticBins(): List<WasteBin> {
+    val bins = mutableListOf<WasteBin>()
+    val sgCenterLat = 1.3521 // The lat and lon is the general coordinates of SG
+    val sgCenterLng = 103.8198
+
+    for (i in 1..15) {
+        val latOffset = (Math.random() - 0.5 ) * 0.1
+        val lngOffset = (Math.random() - 0.5 ) * 0.1
+
+        bins.add(
+            WasteBin(
+                id = "BIN_SG_${String.format("%03d", i)}",
+                latitude = sgCenterLat + latOffset,
+                longitude = sgCenterLng + lngOffset,
+                fillLevel = (0..100).random()
+            )
+        )
+    }
+    return bins
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StaffDashBoard(onLogout: () -> Unit){
+
+    val simulatedBins by remember { mutableStateOf(generateSyntheticBins())}
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -353,11 +384,39 @@ fun StaffDashBoard(onLogout: () -> Unit){
                 .padding(paddingValues)
                 .padding(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            //verticalArrangement = Arrangement.Center
         ) {
-            Text("Welcome", fontSize = 30.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Routing system", fontSize = 16.sp)
+            Text("Bin Data", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("Collection of Bins that are 80% filled", fontSize = 16.sp)
+
+            LazyColumn (
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ){
+                items(simulatedBins) { bin ->
+                    val isCritical = bin.fillLevel > 80
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isCritical) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ){
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(text = bin.id, fontWeight = FontWeight.Bold)
+                            Text(text = "Location: ${String.format("%.4f", bin.latitude)}, ${String.format("%.4f", bin.longitude)}")
+                            Text(
+                                text = "Fill Level: ${bin.fillLevel}%",
+                                color = if (isCritical) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = if (isCritical) FontWeight.Bold else FontWeight.Normal
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
