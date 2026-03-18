@@ -5,6 +5,7 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
+val orsApiKey = localProperties.getProperty("ORS_API_KEY") ?: ""
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -25,6 +26,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "ORS_API_KEY", "\"$orsApiKey\"")
 
     }
 
@@ -48,6 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
 }

@@ -39,7 +39,6 @@ import com.google.android.gms.maps.model.CameraPosition
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
-//import com.google.type.LatLng
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -51,6 +50,16 @@ import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.OutputStreamWriter
+import java.net.URL
+import androidx.compose.ui.graphics.Color
+import com.google.maps.android.compose.Polyline
+import java.net.HttpURLConnection
+import com.example.smartwaste.screens.GuidesListScreen
+import com.example.smartwaste.screens.GuideDetailScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -138,10 +147,26 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(if (currentScreen== "scanner")"Smart Waste disposal app" else "My Profile") },
+               title = {
+                   Text(
+                       when {
+                           currentScreen == "scanner" -> "Smart Waste"
+                           currentScreen == "profile" -> "My Profile"
+                           currentScreen == "guides" -> "Disposal Guides"
+                           currentScreen.startsWith("guideDetail_") -> "Guide Details"
+                           else -> "App"
+                       }
+                   )
+               },
                 navigationIcon = {
-                    if (currentScreen == "profile") {
-                        IconButton(onClick = { currentScreen = "scanner"}) {
+                    if (currentScreen != "scanner") {
+                        IconButton(onClick = {
+                            if (currentScreen.startsWith("guideDetail_")) {
+                                currentScreen = "guides"
+                            } else {
+                                currentScreen = "scanner"
+                            }
+                        }) {
                             Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                         }
                     }
@@ -161,10 +186,28 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
-            if (currentScreen == "scanner") {
-                Scanner(classifier = classifier)
-            } else {
-                ProfileScreen ( onLogout = onLogout )
+            when {
+                currentScreen == "scanner" -> {
+                    Scanner(
+                        classifier = classifier,
+                        onNavigateToGuides = { currentScreen = "guides"},
+                        onNavigateToGuideDetail = { guideId ->
+                            currentScreen = "guideDetail_$guideId"
+                        }
+                    )
+                }
+                currentScreen == "profile" -> {
+                    ProfileScreen(onLogout = onLogout)
+                }
+                currentScreen == "guides" -> {
+                    GuidesListScreen(onGuideClick = { guideId ->
+                        currentScreen = "guideDetail_$guideId"
+                    })
+                }
+                currentScreen.startsWith("guideDetail_") -> {
+                    val id = currentScreen.removePrefix("guideDetail_")
+                    GuideDetailScreen(guideId = id)
+                }
             }
         }
 
@@ -172,7 +215,11 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
 }
 
 @Composable
-fun Scanner(classifier: ImageClassifier) {
+fun Scanner(
+    classifier: ImageClassifier,
+    onNavigateToGuides: () -> Unit,
+    onNavigateToGuideDetail: (String) -> Unit
+) {
     val context = LocalContext.current
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var classificationResult by remember { mutableStateOf<String?>(null) }
@@ -273,10 +320,7 @@ fun Scanner(classifier: ImageClassifier) {
 
         // Guides Button -- For future implementation
         OutlinedButton(
-            onClick = {
-                // Placeholder
-                Toast.makeText(context, "Guides coming soon!", Toast.LENGTH_SHORT).show()
-            },
+            onClick = onNavigateToGuides,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp)
@@ -295,24 +339,53 @@ fun Scanner(classifier: ImageClassifier) {
                 showDialog = false
                 classificationResult = null
             },
+            icon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_camera_alt),
+                    contentDescription = null,
+                    modifier = Modifier.size(36.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            },
             title = { Text("Classification Result") },
             text = {
-                Text(
-                    text = "Your waste is classified as: \n${classificationResult?.uppercase() ?: "Unknown"}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 16.dp)
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ){
+                    Text("Your waste is classified as:", fontSize = 16.sp)
+                    Text(
+                        text = classificationResult?.replace("_"," ")?.uppercase() ?: "Unknown", //This one is just to replace the labelling of underscore to space so it looks better
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                }
             },
             confirmButton = {
                 Button(
                     onClick = {
+                        val rawResult = classificationResult ?: ""
                         showDialog = false
                         classificationResult = null
                         // TODO: Add points to user
-                        // TODO: Show disposal guide
+                        val guideID = when(rawResult.lowercase()) {
+                            "food_waste" -> "food"  //This is because food_waste label does not match the ID in DisposalGuide
+                            else -> rawResult.lowercase()
+                        }
+                        onNavigateToGuideDetail(guideID)
                     }
                 ) {
+                    Text("View Guide")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showDialog = false
+                        classificationResult = null
+                    }
+                ){
                     Text("OK")
                 }
             }
@@ -362,6 +435,43 @@ fun generateSyntheticBins(): List<WasteBin> {
     }
     return bins
 }
+// Suspend so as to run and fetch the data in background
+suspend fun fetchRoute(criticalBins: List<WasteBin>): List<LatLng> = withContext(Dispatchers.IO) {
+    if(criticalBins.size < 2) return@withContext emptyList()
+    val sortedBins = criticalBins.sortedBy { it.longitude }
+    val apikey = BuildConfig.ORS_API_KEY
+    val url = URL("https://api.openrouteservice.org/v2/directions/driving-car/geojson")
+
+    try{
+        val conn = url.openConnection() as HttpURLConnection
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Authorization", apikey)
+        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+        conn.doOutput = true
+
+        val coords = sortedBins.joinToString(",") {"[${it.longitude}, ${it.latitude}]"}
+        val jsonPayload = """{"coordinates":[$coords]}"""
+        OutputStreamWriter(conn.outputStream).use {it.write(jsonPayload)}
+
+        val response = conn.inputStream.bufferedReader().use {it.readText()}
+        val jsonResponse = JSONObject(response)
+
+        val features = jsonResponse.getJSONArray("features")
+        val geometry = features.getJSONObject(0).getJSONObject("geometry")
+        val coordinates = geometry.getJSONArray("coordinates")
+
+        val route = mutableListOf<LatLng>()
+        for (i in 0 until coordinates.length()) {
+            val point = coordinates.getJSONArray(i)
+            route.add(LatLng(point.getDouble(1), point.getDouble(0)))
+        }
+        return@withContext route
+    } catch(e:Exception){
+        e.printStackTrace()
+        return@withContext emptyList()
+    }
+
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StaffDashBoard(onLogout: () -> Unit){
@@ -370,6 +480,12 @@ fun StaffDashBoard(onLogout: () -> Unit){
     val singapore = LatLng(1.3521, 103.8198)
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(singapore, 11f)
+    }
+    var routePoints by remember {mutableStateOf<List<LatLng>>(emptyList())}
+
+    LaunchedEffect(simulatedBins) {
+        val criticalBins = simulatedBins.filter {it.fillLevel > 80}
+        routePoints = fetchRoute(criticalBins)
     }
 
     Scaffold(
@@ -403,7 +519,7 @@ fun StaffDashBoard(onLogout: () -> Unit){
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Bin Data", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Fleet route", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 val criticalCount = simulatedBins.count {it.fillLevel > 80}
                 Text("Requires Pickup: $criticalCount", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
             }
@@ -425,6 +541,13 @@ fun StaffDashBoard(onLogout: () -> Unit){
                         title = bin.id,
                         snippet = "Fill Level: ${bin.fillLevel}%",
                         icon = BitmapDescriptorFactory.defaultMarker(markerColor)
+                    )
+                }
+                if (routePoints.isNotEmpty()) {
+                    Polyline(
+                        points = routePoints,
+                        color = Color.Blue,
+                        width = 12f
                     )
                 }
             }
