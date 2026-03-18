@@ -33,6 +33,12 @@ import androidx.compose.material3.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.graphicsLayer
 
 
 data class DisposalGuide(
@@ -52,24 +58,45 @@ val guideList = listOf(
 
 @Composable
 fun GuidesListScreen(onGuideClick: (String) -> Unit) {
+    val lazyListState = rememberLazyListState()
+    val isAtTop = !lazyListState.canScrollBackward
+    val isAtBottom = !lazyListState.canScrollForward
     LazyColumn(
-      modifier = Modifier
+        state = lazyListState,
+        modifier = Modifier
           .fillMaxSize()
           .padding(16.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ){
         items(guideList) { guide ->
-            GuideCard(guide = guide, onClick = { onGuideClick(guide.id)})
+            val scale by animateFloatAsState(
+                targetValue = if (isAtTop || isAtBottom) 1.02f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessLow
+                )
+            )
+            GuideCard(
+                guide = guide,
+                onClick = { onGuideClick(guide.id)},
+                graphicsModifier = Modifier.graphicsLayer{
+                    scaleX = scale
+                    scaleY = scale
+                })
         }
     }
 }
 
 @Composable
-fun GuideCard(guide: DisposalGuide, onClick: () -> Unit){
+fun GuideCard(
+    guide: DisposalGuide,
+    onClick: () -> Unit,
+    graphicsModifier: Modifier = Modifier){
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(140.dp)
+            .then(graphicsModifier)
             .clickable { onClick()},
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
