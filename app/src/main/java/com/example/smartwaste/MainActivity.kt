@@ -17,8 +17,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
@@ -37,14 +35,22 @@ import androidx.core.content.FileProvider
 import com.example.smartwaste.screens.ProfileScreen
 import com.example.smartwaste.screens.RegistrationScreen
 import com.example.smartwaste.ui.theme.SmartWasteTheme
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.firebase.Firebase
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.firestore
+//import com.google.type.LatLng
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.Objects
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 
 class MainActivity : ComponentActivity() {
 
@@ -361,6 +367,10 @@ fun generateSyntheticBins(): List<WasteBin> {
 fun StaffDashBoard(onLogout: () -> Unit){
 
     val simulatedBins by remember { mutableStateOf(generateSyntheticBins())}
+    val singapore = LatLng(1.3521, 103.8198)
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(singapore, 11f)
+    }
 
     Scaffold(
         topBar = {
@@ -386,35 +396,36 @@ fun StaffDashBoard(onLogout: () -> Unit){
             horizontalAlignment = Alignment.CenterHorizontally,
             //verticalArrangement = Arrangement.Center
         ) {
-            Text("Bin Data", fontSize = 24.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Collection of Bins that are 80% filled", fontSize = 16.sp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Bin Data", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                val criticalCount = simulatedBins.count {it.fillLevel > 80}
+                Text("Requires Pickup: $criticalCount", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+            }
 
-            LazyColumn (
+            GoogleMap(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ){
-                items(simulatedBins) { bin ->
-                    val isCritical = bin.fillLevel > 80
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (isCritical) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ){
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            Text(text = bin.id, fontWeight = FontWeight.Bold)
-                            Text(text = "Location: ${String.format("%.4f", bin.latitude)}, ${String.format("%.4f", bin.longitude)}")
-                            Text(
-                                text = "Fill Level: ${bin.fillLevel}%",
-                                color = if (isCritical) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                                fontWeight = if (isCritical) FontWeight.Bold else FontWeight.Normal
-                            )
-                        }
+                cameraPositionState = cameraPositionState
+            ) {
+                simulatedBins.forEach { bin ->
+                    val isCritical = bin.fillLevel >80
+                    val binLocation = LatLng(bin.latitude, bin.longitude)
+                    val markerColor = if (isCritical) {
+                        BitmapDescriptorFactory.HUE_RED
+                    } else {
+                        BitmapDescriptorFactory.HUE_GREEN
                     }
+                    Marker(
+                        state = MarkerState(position = binLocation),
+                        title = bin.id,
+                        snippet = "Fill Level: ${bin.fillLevel}%",
+                        icon = BitmapDescriptorFactory.defaultMarker(markerColor)
+                    )
                 }
             }
         }
