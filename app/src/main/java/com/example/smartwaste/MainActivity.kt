@@ -60,6 +60,9 @@ import com.google.maps.android.compose.Polyline
 import java.net.HttpURLConnection
 import com.example.smartwaste.screens.GuidesListScreen
 import com.example.smartwaste.screens.GuideDetailScreen
+import com.example.smartwaste.screens.QuizScreen
+import androidx.compose.ui.platform.LocalContext
+
 
 class MainActivity : ComponentActivity() {
 
@@ -142,6 +145,20 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
     var currentScreen by remember {mutableStateOf("scanner")}
+    var userPoints by remember { mutableStateOf(0)}
+
+    //Real time listener for firestore to check the user points
+    LaunchedEffect(Unit) {
+        val uid = Firebase.auth.currentUser?.uid
+        if (uid != null) {
+            Firebase.firestore.collection("users").document(uid)
+                .addSnapshotListener { snapshot,  error ->
+                    if (error == null && snapshot != null && snapshot.exists()) {
+                        userPoints = snapshot.getLong("points")?.toInt() ?: 0 //Set points to 0 if it does not exist (maybe its a new user)
+                    }
+                }
+        }
+    }
 
     // Screen layout
     Scaffold(
@@ -154,12 +171,13 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                            currentScreen == "profile" -> "My Profile"
                            currentScreen == "guides" -> "Disposal Guides"
                            currentScreen.startsWith("guideDetail_") -> "Guide Details"
+                           currentScreen == "quiz" -> "Take quiz"
                            else -> "App"
                        }
                    )
                },
                 navigationIcon = {
-                    if (currentScreen != "scanner") {
+                    if (currentScreen != "scanner" && currentScreen != "quiz") {
                         IconButton(onClick = {
                             if (currentScreen.startsWith("guideDetail_")) {
                                 currentScreen = "guides"
@@ -190,10 +208,12 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                 currentScreen == "scanner" -> {
                     Scanner(
                         classifier = classifier,
+                        points = userPoints,
                         onNavigateToGuides = { currentScreen = "guides"},
                         onNavigateToGuideDetail = { guideId ->
                             currentScreen = "guideDetail_$guideId"
-                        }
+                        },
+                        onNavigateToQuiz = {currentScreen = "quiz"}
                     )
                 }
                 currentScreen == "profile" -> {
@@ -208,6 +228,28 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                     val id = currentScreen.removePrefix("guideDetail_")
                     GuideDetailScreen(guideId = id)
                 }
+                currentScreen == "quiz" -> {
+                    val context = LocalContext.current
+                    QuizScreen(
+                        onQuizComplete = {pointsEarned ->
+                            val sharedPrefs = context.getSharedPreferences("SmartWastePrefs", Context.MODE_PRIVATE)
+                            val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                            sharedPrefs.edit().putString("lastQuizDate", currentDate).apply()
+                            val uid = Firebase.auth.currentUser?.uid
+                            if (uid != null) {
+                                Firebase.firestore.collection("users").document(uid)
+                                    .update("points", com.google.firebase.firestore.FieldValue.increment(pointsEarned.toLong()))
+                                    .addOnSuccessListener {
+                                        Toast.makeText(context, "Earned $pointsEarned points!",Toast.LENGTH_SHORT).show()
+                                    }
+                            }
+
+
+                            currentScreen = "scanner"
+                        },
+                            onNavigateBack = {currentScreen = "scanner"}
+                        )
+                }
             }
         }
 
@@ -217,10 +259,20 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
 @Composable
 fun Scanner(
     classifier: ImageClassifier,
+    points: Int,
     onNavigateToGuides: () -> Unit,
-    onNavigateToGuideDetail: (String) -> Unit
+    onNavigateToGuideDetail: (String) -> Unit,
+    onNavigateToQuiz: () -> Unit
 ) {
     val context = LocalContext.current
+    //Quiz
+    val sharedPrefs = context.getSharedPreferences("SmartWastePrefs", Context.MODE_PRIVATE)
+    val lastPlayedDate = sharedPrefs.getString("lastQuizDate", "")
+    val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+    //val canPlayQuiz = lastPlayedDate != currentDate //Uncomment for actual testing because of the date
+    val canPlayQuiz = true // To remove after done with testing quiz because the quiz is supposed to be once a day
+
+    //For scanning of waste
     var imageUri by remember { mutableStateOf<Uri?>(null) }
     var classificationResult by remember { mutableStateOf<String?>(null) }
     var showDialog by remember { mutableStateOf(false) }
@@ -278,13 +330,28 @@ fun Scanner(
 
         // Points display
         Text(
-            text = "Your Points: 0",
+            text = "Your Points: $points",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
 
         Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = onNavigateToQuiz,
+            enabled = canPlayQuiz,
+            modifier = Modifier.fillMaxWidth().height(60.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondary
+            )
+        ){
+            Text(
+                text = if (canPlayQuiz) "Take the daily quiz for points!" else "Come back tomorrow for more points",
+                fontSize = 16.sp
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Scan button
         Button(
@@ -318,7 +385,7 @@ fun Scanner(
             )
         }
 
-        // Guides Button -- For future implementation
+        // Guides Button
         OutlinedButton(
             onClick = onNavigateToGuides,
             modifier = Modifier

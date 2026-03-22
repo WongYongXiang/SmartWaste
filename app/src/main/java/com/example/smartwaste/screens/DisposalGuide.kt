@@ -36,10 +36,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.graphicsLayer
-
+import androidx.compose.ui.input.pointer.pointerInput
 
 data class DisposalGuide(
     val id: String,
@@ -51,38 +54,54 @@ data class DisposalGuide(
 
 val guideList = listOf(
     DisposalGuide("food", "Food Waste", "Organics, Compost", "Learn how to properly seperate food scraps..."),
-    DisposalGuide("paper", "Paper Product", "Recyclables", "Ensure that boxes are flattened and paper are dry..."),
-    DisposalGuide("plastic", "Plastics", "Recyclables", "Rinse plastic and check the type of plastic. Not all plastics are accepted..."),
+    DisposalGuide("paper", "Paper Product", "Recyclables", "Used papers stacking up? Not sure what to do with it? Find out more... "),
+    DisposalGuide("plastic", "Plastics", "Recyclables", "Do you know not all plastics are equal? Find out more here..."),
     DisposalGuide("metal", "Metals", "Recyclables", "Aluminum cans and tin foil should be rinsed and look out for sharp edges...")
 )
 
 @Composable
 fun GuidesListScreen(onGuideClick: (String) -> Unit) {
-    val lazyListState = rememberLazyListState()
-    val isAtTop = !lazyListState.canScrollBackward
-    val isAtBottom = !lazyListState.canScrollForward
-    LazyColumn(
-        state = lazyListState,
+    var verticalTranslation by remember { mutableStateOf(0f)}
+    val animatedTranslation by animateFloatAsState(
+        targetValue = verticalTranslation,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    )
+    val stretchScale = 1f + (animatedTranslation.coerceIn(0f, 500f)/200f)
+
+    Box(
         modifier = Modifier
-          .fillMaxSize()
-          .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ){
-        items(guideList) { guide ->
-            val scale by animateFloatAsState(
-                targetValue = if (isAtTop || isAtBottom) 1.02f else 1f,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                    stiffness = Spring.StiffnessLow
+            .fillMaxSize()
+            .pointerInput(Unit){
+                detectVerticalDragGestures(
+                    onVerticalDrag = {_, dragAmount ->
+                        verticalTranslation += dragAmount*0.5f
+                    },
+                    onDragEnd = {
+                        verticalTranslation = 0f
+                    }
                 )
-            )
-            GuideCard(
-                guide = guide,
-                onClick = { onGuideClick(guide.id)},
-                graphicsModifier = Modifier.graphicsLayer{
-                    scaleX = scale
-                    scaleY = scale
-                })
+            }
+    ) {
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            items(guideList) { guide ->
+                GuideCard(
+                    guide = guide,
+                    onClick = { onGuideClick(guide.id) },
+                    graphicsModifier = Modifier.graphicsLayer {
+                        translationY = animatedTranslation * 0.1f
+                        scaleY = stretchScale
+                    }
+                )
+            }
         }
     }
 }
@@ -169,20 +188,57 @@ fun GuideDetailScreen(guideId:String) {
 fun PlasticGuideContent(){
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "bla bla bla...",
+            text = "Do you know that not all plastics can be recycled?" +
+            "Plastics are categorised into 5 categories, Type 1 - 5. " +
+            "However, Type 3 plastics made out of Polyvinyl Chloride, also known as PVC are non-recyclable. "+
+            "Common type of type 3 plastics include pipes, cling wrap and credit cards. "+
+            "To recycle responsibly you can follow the following steps.",
             fontSize = 16.sp, lineHeight = 24.sp
         )
         Text(
-            text = "Step 1: ",
+            text = "Step 1:",
             fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary
         )
         Text(
-            text = "content",
+            text = "If the plastic item can be given a second chance, reuse or donate it!",
             fontSize = 16.sp, lineHeight = 24.sp
         )
         Text(
-            text = "Step 2: bla bla bla",
+            text = "Step 2: ",
             fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary
+        )
+        Text(
+            text = "Check the type of plastic. The type of plastic can be usually found at the bottom of the product with a triangle logo. If unclear, check the full list below",
+            fontSize = 16.sp, lineHeight = 24.sp
+        )
+        Text(
+            text = "Step 3:",
+            fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary
+        )
+        Text(
+            text = "Make sure the contents of the item is empty and give it a rinse before recycling",
+            fontSize = 16.sp, lineHeight = 24.sp
+        )
+        Text(
+            text = "Plastics that can or cannot be recycled",
+            fontSize = 26.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.tertiary
+        )
+        Text(
+            text = "Can be recycled",
+            fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32)
+        )
+        Text(
+            text = "Plastic Bottles \nPlastic Container \nShampoo Bottle \nBodywash Bottle \nFacial Cleanser Bottle \nDetergent Bottle",
+            fontSize = 16.sp, lineHeight = 24.sp
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Cannot be recycled",
+            fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFFC62828)
+        )
+        Text(
+            text = "Polystyrene Foam Product \nStyrofoam \nPlastic disposables which includes plastic cutlery and crockery \nPlastic packaging with foil \nOxo-Degradable bag \nCassette and video tapes",
+            fontSize = 16.sp, lineHeight = 24.sp
         )
     }
 }
@@ -213,7 +269,9 @@ fun FoodGuideContent(){
 fun PaperGuideContent(){
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "bla bla bla...",
+            text = "Flyers from property agents choking up your doors? Throwing away your "+
+            "egg trays directly into the general disposal bin? These can be recycled! " +
+            "Follow the following steps on how you can dispose your paper products in a responsible manner",
             fontSize = 16.sp, lineHeight = 24.sp
         )
         Text(
@@ -221,12 +279,24 @@ fun PaperGuideContent(){
             fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary
         )
         Text(
-            text = "content",
+            text = "Check if these paper products can be repurposed. If they are books, donate it. If you have papers with an empty page on the other side, use it for rough work.",
             fontSize = 16.sp, lineHeight = 24.sp
         )
         Text(
-            text = "Step 2: bla bla bla",
+            text = "Step 2:",
             fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary
+        )
+        Text(
+            text = "Make sure the items are not contaminated or sanitary products. These are not accepted!",
+            fontSize = 16.sp, lineHeight = 24.sp
+        )
+        Text(
+            text = "Step 3:",
+            fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary
+        )
+        Text(
+            text = "Give the item a rinse for products with waterproof lining, such as milk cartons",
+            fontSize = 16.sp, lineHeight = 24.sp
         )
     }
 }
