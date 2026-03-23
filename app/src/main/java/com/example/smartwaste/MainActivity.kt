@@ -16,6 +16,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +38,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.example.smartwaste.screens.ProfileScreen
@@ -51,7 +58,6 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -64,7 +70,6 @@ import java.net.HttpURLConnection
 import com.example.smartwaste.screens.GuidesListScreen
 import com.example.smartwaste.screens.GuideDetailScreen
 import com.example.smartwaste.screens.QuizScreen
-import androidx.compose.ui.platform.LocalContext
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.Dash
 import com.google.android.gms.maps.model.Gap
@@ -592,6 +597,7 @@ fun StaffDashBoard(onLogout: () -> Unit) {
     val defaultLocation = LatLng(1.3521, 103.8198) //just in case gps not working then we fallback to the general location of SG
     var currentLocation by remember { mutableStateOf<LatLng?>(null) } // this is set to null such that we wait for the gps to locate our location while being null
     var routePoints by remember{ mutableStateOf<List<LatLng>>(emptyList())}
+    var sortedCriticalBins by remember { mutableStateOf<List<WasteBin>>(emptyList()) }
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(defaultLocation, 11f)
     }
@@ -639,6 +645,7 @@ fun StaffDashBoard(onLogout: () -> Unit) {
         if (currentLocation != null){
             cameraPositionState.position = CameraPosition.fromLatLngZoom(currentLocation!!, 13f)
             val criticalBins = simulatedBins.filter { it.fillLevel > 80 }
+            sortedCriticalBins = sortBinsByNearestNeighbour(currentLocation!!, criticalBins)
             routePoints = fetchRoute(
                 currentLocation = currentLocation!!,
                 criticalBins = criticalBins
@@ -672,14 +679,14 @@ fun StaffDashBoard(onLogout: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(16.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             //verticalArrangement = Arrangement.Center
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(bottom= 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -692,7 +699,12 @@ fun StaffDashBoard(onLogout: () -> Unit) {
                 )
             }
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .weight(1.2f)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+            ) {
                 GoogleMap(
                     modifier = Modifier.fillMaxSize(),
                     cameraPositionState = cameraPositionState
@@ -713,7 +725,7 @@ fun StaffDashBoard(onLogout: () -> Unit) {
                             icon = BitmapDescriptorFactory.defaultMarker(markerColor)
                         )
                     }
-                    if (currentLocation != null){
+                    if (currentLocation != null) {
                         val driverState = rememberMarkerState(position = currentLocation!!)
                         Marker(
                             state = driverState,
@@ -734,6 +746,49 @@ fun StaffDashBoard(onLogout: () -> Unit) {
                         )
                     }
                 }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+            if (sortedCriticalBins.isNotEmpty()){
+                Text(text = "Pickup Sequence", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(sortedCriticalBins) {index, bin ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ){
+                                    Text("${index + 1}", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column{
+                                    Text(text=bin.id, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                    Text(text="Fill Level: ${bin.fillLevel}%", color = MaterialTheme.colorScheme.error, fontSize=14.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
                 if (routePoints.isNotEmpty() && currentLocation != null) {
                     Button(
                         onClick = {
@@ -759,8 +814,6 @@ fun StaffDashBoard(onLogout: () -> Unit) {
 
                         },
                         modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
                             .fillMaxWidth()
                             .height(56.dp)
 
@@ -768,9 +821,14 @@ fun StaffDashBoard(onLogout: () -> Unit) {
                         Text(text ="Start Navigation", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
+            } else {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center){
+                    Text(text = "All bins are operating at normal level", textAlign = TextAlign.Center, color =Color.Gray)
+                }
             }
         }
     }
+}
 }
 
 
