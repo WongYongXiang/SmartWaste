@@ -82,6 +82,7 @@ dependencies {
     //Google map dependencies but there is some problem with using the version catalog so dont change (resolved)
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
 
     implementation(libs.androidx.compose.material.icons.extended)
 }

@@ -10,6 +10,8 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.widget.Toast
+import android.content.Intent
+import android.location.Location
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -21,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,6 +65,11 @@ import com.example.smartwaste.screens.GuidesListScreen
 import com.example.smartwaste.screens.GuideDetailScreen
 import com.example.smartwaste.screens.QuizScreen
 import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.model.Dash
+import com.google.android.gms.maps.model.Gap
+import com.google.android.gms.maps.model.RoundCap
+import com.google.maps.android.compose.rememberMarkerState
 
 
 class MainActivity : ComponentActivity() {
@@ -341,7 +349,9 @@ fun Scanner(
         Button(
             onClick = onNavigateToQuiz,
             enabled = canPlayQuiz,
-            modifier = Modifier.fillMaxWidth().height(60.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(60.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondary
             )
@@ -484,28 +494,61 @@ data class WasteBin(
 
 fun generateSyntheticBins(): List<WasteBin> {
     val bins = mutableListOf<WasteBin>()
-    val sgCenterLat = 1.3521 // The lat and lon is the general coordinates of SG
-    val sgCenterLng = 103.8198
+    val locations = listOf(
+        LatLng(1.309039, 103.880682), //Guillemard Cres near Mountbatten Rd
+        LatLng(1.312422, 103.889680), //Lor 40 Geyland area
+        LatLng(1.310474, 103.927666), // Jln Kampung Siglap
+        LatLng(1.327967, 103.928696), // Bedok area
+        LatLng(1.371037, 103.957664), // Pasir Ris area
+        LatLng(1.399084, 103.902373), // Punggol area
+        LatLng(1.354056, 103.865489), // Lorong Chuan
+        LatLng(1.434018, 103.799525), // Woodlands Drive
+        LatLng(1.378091, 103.768164), // Bukit Panjang
+        LatLng(1.337382, 103.743049), // Jurong East
+        LatLng(1.336899, 103.697514), // Jurong West
+        LatLng(1.337741, 103.721641), // Corporation Dr
 
-    for (i in 1..15) {
-        val latOffset = (Math.random() - 0.5 ) * 0.1
-        val lngOffset = (Math.random() - 0.5 ) * 0.1
+    )
 
+    locations.forEachIndexed { index,  location ->
         bins.add(
             WasteBin(
-                id = "BIN_SG_${String.format("%03d", i)}",
-                latitude = sgCenterLat + latOffset,
-                longitude = sgCenterLng + lngOffset,
+                id = "BIN_${String.format("%03d", index + 1)}",
+                latitude = location.latitude,
+                longitude = location.longitude,
                 fillLevel = (0..100).random()
             )
         )
     }
     return bins
 }
+fun sortBinsByNearestNeighbour(startLocation:LatLng, binsToVisit: List<WasteBin>): List<WasteBin> {
+    val unvisited = binsToVisit.toMutableList()
+    val optimisedRoute = mutableListOf<WasteBin>()
+    var currentLocation = startLocation
+
+    while (unvisited.isNotEmpty()){
+        val nearestBin = unvisited.minByOrNull { bin ->
+            val results = FloatArray(1)
+            Location.distanceBetween(
+                currentLocation.latitude, currentLocation.longitude,
+                bin.latitude, bin.longitude,
+                results
+            )
+            results[0]
+        }
+        if (nearestBin != null) {
+            optimisedRoute.add(nearestBin)
+            unvisited.remove(nearestBin)
+            currentLocation = LatLng(nearestBin.latitude, nearestBin.longitude)
+        }
+    }
+    return optimisedRoute
+}
 // Suspend so as to run and fetch the data in background
-suspend fun fetchRoute(criticalBins: List<WasteBin>): List<LatLng> = withContext(Dispatchers.IO) {
-    if(criticalBins.size < 2) return@withContext emptyList()
-    val sortedBins = criticalBins.sortedBy { it.longitude }
+suspend fun fetchRoute(currentLocation: LatLng, criticalBins: List<WasteBin>): List<LatLng> = withContext(Dispatchers.IO) {
+    if(criticalBins.isEmpty()) return@withContext emptyList()
+    val sortedBins = sortBinsByNearestNeighbour(currentLocation, criticalBins)
     val apikey = BuildConfig.ORS_API_KEY
     val url = URL("https://api.openrouteservice.org/v2/directions/driving-car/geojson")
 
@@ -516,8 +559,9 @@ suspend fun fetchRoute(criticalBins: List<WasteBin>): List<LatLng> = withContext
         conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8")
         conn.doOutput = true
 
-        val coords = sortedBins.joinToString(",") {"[${it.longitude}, ${it.latitude}]"}
-        val jsonPayload = """{"coordinates":[$coords]}"""
+        val driverCords = "[${currentLocation.longitude}, ${currentLocation.latitude}]"
+        val binCords = sortedBins.joinToString(",") {"[${it.longitude}, ${it.latitude}]"}
+        val jsonPayload = """{"coordinates":[$driverCords, $binCords]}"""
         OutputStreamWriter(conn.outputStream).use {it.write(jsonPayload)}
 
         val response = conn.inputStream.bufferedReader().use {it.readText()}
@@ -541,25 +585,78 @@ suspend fun fetchRoute(criticalBins: List<WasteBin>): List<LatLng> = withContext
 }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StaffDashBoard(onLogout: () -> Unit){
-
-    val simulatedBins by remember { mutableStateOf(generateSyntheticBins())}
-    val singapore = LatLng(1.3521, 103.8198)
+fun StaffDashBoard(onLogout: () -> Unit) {
+    val context = LocalContext.current
+    var simulatedBins by remember { mutableStateOf(generateSyntheticBins()) }
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val defaultLocation = LatLng(1.3521, 103.8198) //just in case gps not working then we fallback to the general location of SG
+    var currentLocation by remember { mutableStateOf<LatLng?>(null) } // this is set to null such that we wait for the gps to locate our location while being null
+    var routePoints by remember{ mutableStateOf<List<LatLng>>(emptyList())}
     val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(singapore, 11f)
+        position = CameraPosition.fromLatLngZoom(defaultLocation, 11f)
     }
-    var routePoints by remember {mutableStateOf<List<LatLng>>(emptyList())}
 
-    LaunchedEffect(simulatedBins) {
-        val criticalBins = simulatedBins.filter {it.fillLevel > 80}
-        routePoints = fetchRoute(criticalBins)
+    //If the user never give permission or permission denied for location services then it fallsback to default location
+    val locationPermissionsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true|| permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+
+        if (isGranted) {
+            try {
+                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    currentLocation = if (location != null) {
+                        LatLng(location.latitude, location.longitude)
+                    } else defaultLocation
+                }
+            } catch (e: SecurityException){
+                currentLocation = defaultLocation
+            }
+        } else {
+            currentLocation = defaultLocation
+        }
+    }
+    LaunchedEffect(Unit) {
+        val hasPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        if (hasPermission){
+            try {
+                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                    currentLocation = if (location != null){
+                        LatLng(location.latitude, location.longitude)
+                    } else defaultLocation
+                }
+            } catch (e: SecurityException){
+                currentLocation = defaultLocation
+            }
+        } else {
+            locationPermissionsLauncher.launch(
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+            )
+        }
+    }
+
+    LaunchedEffect(currentLocation,simulatedBins) {
+        if (currentLocation != null){
+            cameraPositionState.position = CameraPosition.fromLatLngZoom(currentLocation!!, 13f)
+            val criticalBins = simulatedBins.filter { it.fillLevel > 80 }
+            routePoints = fetchRoute(
+                currentLocation = currentLocation!!,
+                criticalBins = criticalBins
+            )
+        }
+
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Staff Dashboard")},
+                title = { Text("Staff Dashboard") },
                 actions = {
+                    IconButton(onClick = {
+                        simulatedBins = generateSyntheticBins()
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Refresh Route")
+                    }
                     IconButton(onClick = onLogout) {
                         Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
                     }
@@ -587,35 +684,89 @@ fun StaffDashBoard(onLogout: () -> Unit){
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text("Fleet route", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                val criticalCount = simulatedBins.count {it.fillLevel > 80}
-                Text("Requires Pickup: $criticalCount", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                val criticalCount = simulatedBins.count { it.fillLevel > 80 }
+                Text(
+                    "Requires Pickup: $criticalCount",
+                    color = MaterialTheme.colorScheme.error,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
-            GoogleMap(
-                modifier = Modifier.fillMaxSize(),
-                cameraPositionState = cameraPositionState
-            ) {
-                simulatedBins.forEach { bin ->
-                    val isCritical = bin.fillLevel >80
-                    val binLocation = LatLng(bin.latitude, bin.longitude)
-                    val markerColor = if (isCritical) {
-                        BitmapDescriptorFactory.HUE_RED
-                    } else {
-                        BitmapDescriptorFactory.HUE_GREEN
+            Box(modifier = Modifier.fillMaxSize()) {
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState
+                ) {
+                    simulatedBins.forEach { bin ->
+                        val isCritical = bin.fillLevel > 80
+                        val binLocation = LatLng(bin.latitude, bin.longitude)
+                        val markerColor = if (isCritical) {
+                            BitmapDescriptorFactory.HUE_RED
+                        } else {
+                            BitmapDescriptorFactory.HUE_GREEN
+                        }
+                        val binMarkerState = rememberMarkerState(position = binLocation)
+                        Marker(
+                            state = binMarkerState,
+                            title = bin.id,
+                            snippet = "Fill Level: ${bin.fillLevel}%",
+                            icon = BitmapDescriptorFactory.defaultMarker(markerColor)
+                        )
                     }
-                    Marker(
-                        state = MarkerState(position = binLocation),
-                        title = bin.id,
-                        snippet = "Fill Level: ${bin.fillLevel}%",
-                        icon = BitmapDescriptorFactory.defaultMarker(markerColor)
-                    )
+                    if (currentLocation != null){
+                        val driverState = rememberMarkerState(position = currentLocation!!)
+                        Marker(
+                            state = driverState,
+                            title = "Your Current Location",
+                            snippet = "Starting point",
+                            icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)
+                        )
+
+                    }
+
+                    if (routePoints.isNotEmpty()) {
+                        Polyline(
+                            points = routePoints,
+                            color = Color.Blue,
+                            width = 12f,
+                            pattern = listOf(Dash(30f), Gap(20f)),
+                            endCap = RoundCap()
+                        )
+                    }
                 }
-                if (routePoints.isNotEmpty()) {
-                    Polyline(
-                        points = routePoints,
-                        color = Color.Blue,
-                        width = 12f
-                    )
+                if (routePoints.isNotEmpty() && currentLocation != null) {
+                    Button(
+                        onClick = {
+                            val criticalBins = simulatedBins.filter{it.fillLevel >80}
+                            var sortedBins = sortBinsByNearestNeighbour(currentLocation!!, criticalBins)
+                            if (sortedBins.isNotEmpty()){
+                                val origin = currentLocation!!
+                                val destination = sortedBins.last()
+                                val middleStops = sortedBins.dropLast(1)
+                                val waypointsStr = middleStops.joinToString("|") {"${it.latitude},${it.longitude}"}
+                                var mapUri = "https://www.google.com/maps/dir/?api=1" +
+                                            "&origin=${origin.latitude},${origin.longitude}" +
+                                            "&destination=${destination.latitude},${destination.longitude}" +
+                                            "&travelmode=driving"
+
+                                if(waypointsStr.isNotEmpty()){
+                                    mapUri += "&waypoints=$waypointsStr"
+                                }
+                                val mapIntent = Intent(Intent.ACTION_VIEW, Uri.parse(mapUri))
+                                mapIntent.setPackage("com.google.android.apps.maps")
+                                context.startActivity(mapIntent)
+                            }
+
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                            .fillMaxWidth()
+                            .height(56.dp)
+
+                    ) {
+                        Text(text ="Start Navigation", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

@@ -9,6 +9,11 @@
     <!-- Declaring that the app will use camera, but not strictly required, just that the scanning wont work-->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <!-- This one is also the permission to access location so that you can perform routing-->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
