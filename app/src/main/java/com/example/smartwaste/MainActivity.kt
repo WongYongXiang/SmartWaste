@@ -74,6 +74,8 @@ import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.rememberMarkerState
 import android.util.Log
 import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import com.example.smartwaste.screens.LogsScreen
 import com.example.smartwaste.screens.RewardScreen
 
@@ -193,8 +195,9 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = Color(0xFFFAFCFA),
+                    titleContentColor = Color(0xFF2E7D32),
+                    actionIconContentColor = Color(0xFF2E7D32)
                 )
             )
         },
@@ -206,8 +209,10 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                         currentScreen = "scanner"
                         triggerCamera = true
                     },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    shape = CircleShape
+                    containerColor = Color(0xFF2E7D32),
+                    contentColor = Color.White,
+                    shape = CircleShape,
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
                 ) {
                     Icon(
                         painterResource(id = R.drawable.ic_camera_alt),
@@ -417,16 +422,22 @@ fun Scanner(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFFFAFCFA))
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ){
         Box(
             modifier = Modifier
-                .size(250.dp)
-                .background(Color.Transparent, shape = CircleShape)
-                .border(6.dp, MaterialTheme.colorScheme.primary, CircleShape),
-            contentAlignment = Alignment.Center
+                .size(280.dp)
+                .shadow(16.dp, CircleShape, ambientColor = Color(0xFF2E7D32), spotColor = Color(0xFF2E7D32))
+                .background(
+                    brush = Brush.linearGradient(
+                        colors = listOf(Color(0xFF66BB6A), Color(0xFF2E7D32))
+                    ),
+                    shape = CircleShape
+                ),
+                    contentAlignment = Alignment.Center
         ){
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -435,23 +446,45 @@ fun Scanner(
                     text = "$points",
                     fontSize = 80.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = Color.White
                 )
                 Text(
                     text = "Points",
                     fontSize = 24.sp,
-                    color = MaterialTheme.colorScheme.primary
+                    color = Color(0xFFE8F5E9),
+                    fontWeight = FontWeight.Medium
                 )
             }
         }
-        Spacer(modifier = Modifier.height(64.dp))
-        Text(
-            text = "Take daily quiz to\nget more points",
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.secondary,
-            fontWeight = FontWeight.Medium
-        )
+        Spacer(modifier = Modifier.height(56.dp))
+
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+            modifier = Modifier.fillMaxWidth(0.85f)
+        ){
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ){
+                Icon(
+                    imageVector = Icons.Default.AddTask,
+                    contentDescription = "Quiz",
+                    tint = Color(0xFF2E7D32),
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = "Take daily quiz to get more points!",
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Start,
+                    color = Color(0xFF1B5E20),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 
     // Results

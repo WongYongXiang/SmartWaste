@@ -1,13 +1,19 @@
 package com.example.smartwaste.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.Firebase
@@ -31,9 +37,15 @@ fun RewardScreen(userPoints: Int) {
 
     Column(modifier = Modifier
         .fillMaxSize()
+        .background(Color(0xFFFAFCFA))
         .padding(16.dp)
     ){
-        Text(text = "Available Rewards", fontSize = 24.sp, modifier = Modifier.padding(bottom=16.dp))
+        Text(text = "Available Rewards",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF1B5E20),
+            modifier = Modifier
+                .padding(bottom=16.dp, top = 8.dp))
 
         rewards.forEach { reward ->
             Card(
@@ -44,19 +56,41 @@ fun RewardScreen(userPoints: Int) {
                         showInsufficientPoints =true
                     }
                 },
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(vertical = 20.dp)
+
             ){
                 Row(
                     modifier = Modifier
-                        .padding(16.dp)
+                        .padding(20.dp)
                         .fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ){
-                    Text(text= reward.title, fontSize = 18.sp)
-                    Text(text= "${reward.cost} pts", color = MaterialTheme.colorScheme.primary)
+                    Row(verticalAlignment = Alignment.CenterVertically){
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Reward",
+                            tint = Color(0xFF2E7D32),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(text= reward.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0XFF1B5E20))
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF2E7D32).copy(alpha=0.1f)
+                    ){
+                        Text(
+                            text= "${reward.cost} pts",
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            color = Color(0xFF2E7D32),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
         }
