@@ -25,10 +25,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ExitToApp
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -75,6 +72,7 @@ import com.google.android.gms.maps.model.Dash
 import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.rememberMarkerState
+import android.util.Log
 
 
 class MainActivity : ComponentActivity() {
@@ -159,6 +157,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
     var currentScreen by remember {mutableStateOf("scanner")}
     var userPoints by remember { mutableStateOf(0)}
+    var triggerCamera by remember {mutableStateOf(false)}
 
     //Real time listener for firestore to check the user points
     LaunchedEffect(Unit) {
@@ -297,7 +296,7 @@ fun Scanner(
                 imageUri?.let { uri ->
                     // Convert the image URI to a Bitmap
                     val bitmap: Bitmap = if (Build.VERSION.SDK_INT < 28) {
-                        @Suppress("DEPRECATION") //This is deprecated, but we're using an old API
+                        @Suppress("DEPRECATION")
                         MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
                     } else {
                         val source = ImageDecoder.createSource(context.contentResolver, uri)
@@ -306,7 +305,15 @@ fun Scanner(
                     // Since the bitmap used by phone camera is a hardware bitmap, we copy it to a software bitmap so that it can be read by CPU for processing
                     val softwareBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
                     // Run the classification on software copy
+
+                    // Logging of timer to check how long the classification actually take in real time
+                    val startTime = System.currentTimeMillis()
+
                     val result = classifier.classify(softwareBitmap)
+                    val endTime = System.currentTimeMillis() //End timer
+                    val latency = endTime - startTime
+                    Log.d("CategorisationLatency", "Inference time: $latency ms")
+
                     classificationResult = result
                     showDialog = true
 
@@ -334,22 +341,35 @@ fun Scanner(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
+        Surface(
+            shape = RoundedCornerShape(50),
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.padding(top=16.dp)
+        ){
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+            ){
+                Icon(
+                    painter = painterResource(R.drawable.ic_camera_alt),
+                    contentDescription = "Points",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "$points Points",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
+        }
+        Spacer(modifier = Modifier.weight(0.8f))
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Points display
-        Text(
-            text = "Your Points: $points",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Spacer(modifier = Modifier.weight(1f))
 
         Button(
             onClick = onNavigateToQuiz,
@@ -450,7 +470,6 @@ fun Scanner(
                         val rawResult = classificationResult ?: ""
                         showDialog = false
                         classificationResult = null
-                        // TODO: Add points to user
                         val guideID = when(rawResult.lowercase()) {
                             "food_waste" -> "food"  //This is because food_waste label does not match the ID in DisposalGuide
                             else -> rawResult.lowercase()
