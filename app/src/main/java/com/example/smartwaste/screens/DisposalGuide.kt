@@ -59,11 +59,11 @@ data class DisposalGuide(
 
 
 val guideList = listOf(
-    DisposalGuide("food", "Food Waste", "Organics, Compost", "Learn how to properly seperate food scraps...", R.drawable.food_waste_logo),
     DisposalGuide("paper", "Paper Product", "Recyclables", "Used papers stacking up? Not sure what to do with it? Find out more... ",R.drawable.paper_logo),
     DisposalGuide("plastic", "Plastics", "Recyclables", "Do you know not all plastics are equal? Find out more here...",R.drawable.plastic_logo),
     DisposalGuide("metal", "Metals", "Recyclables", "Aluminum cans and tin foil should be rinsed and look out for sharp edges...", R.drawable.metal_logo),
-    DisposalGuide("glass", "Glass", "Recyclables", "Glass never quits. Recycle to bring new life to them...", R.drawable.glass_logo)
+    DisposalGuide("glass", "Glass", "Recyclables", "Glass never quits. Recycle to bring new life to them...", R.drawable.glass_logo),
+    DisposalGuide("food", "Food Waste", "Organics, Compost", "Learn how to properly seperate food scraps...", R.drawable.food_waste_logo)
 )
 
 @Composable
@@ -246,7 +246,7 @@ fun PlasticGuideContent(){
         )
         InfoCard(
             title = "Cannot be recycled",
-            text = "Polystyrene Foam Product \nStyrofoam \nPlastic disposables which includes plastic cutlery and crockery \nPlastic packaging with foil \nOxo-Degradable bag \nCassette and video tapes",
+            text = "Polystyrene Foam Product \nStyrofoam \nPlastic Disposables \nPlastic Packaging with Foil \nOxo-Degradable Bag \nCassette and Video Tapes",
             isPositive = false
         )
     }
@@ -260,24 +260,15 @@ fun FoodGuideContent(){
             fontSize = 16.sp, lineHeight = 24.sp, color = Color.DarkGray
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Text("How to Recycle", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+        Text("How to Dispose", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
 
         StepItem("1","To add")
         StepItem("2","To add")
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "What can or cannot be recycled",
-            fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20)
-        )
 
         InfoCard(
-            title = "Can be recycled",
-            text = "bla bla",
-            isPositive = true
-        )
-        InfoCard(
-            title = "Cannot be recycled",
-            text = "bla bla bla",
+            title = "Food waste cannot be recycled, don't even think about it!",
+            text = "",
             isPositive = false
         )
     }
@@ -307,12 +298,14 @@ fun PaperGuideContent(){
 
         InfoCard(
             title = "Can be recycled",
-            text = "bla bla",
+            text = "Printed Paper \nWriting Paper\nNewspaper \nFlyer \nBrochure \nMagazine \nBooks/Textbooks \nTelephone Directory \nEnvelope \nRed Packet \nNameCard "+
+            "\nCalendar \nGreeting Card \nGift Wrapping Paper \nShredded Paper \nPaper Receipt \nCarton/Cardboard Box \nPaper packaging \nPrinted Paper Box \nPaper Box "+
+            "\nEgg Trays \nBeverage Carton \nPaper Towel Tube \nToilet Roll Tube \nTissue Box \nPaper Bag",
             isPositive = true
         )
         InfoCard(
             title = "Cannot be recycled",
-            text = "bla bla bla",
+            text = "Paper Disposables \nTissue Paper \nPaper Towel \nToilet Paper \nWooden Chopsticks \nPizza Boxes \nContaminated Paper Packaging",
             isPositive = false
         )
 
@@ -329,8 +322,9 @@ fun MetalGuideContent(){
         Spacer(modifier = Modifier.height(8.dp))
         Text("How to Recycle", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
 
-        StepItem("1","To add")
-        StepItem("2","To add")
+        StepItem("1","Check for any sharp edges before handling them! \nFold them inwards if possible")
+        StepItem("2","For metal items used to store liquid, ensure that the contents are emptied")
+        StepItem("3","Give it a rinse and ensure that it is not contamined or rusty")
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(
@@ -340,12 +334,13 @@ fun MetalGuideContent(){
 
         InfoCard(
             title = "Can be recycled",
-            text = "bla bla",
+            text = "Beverage Metal Can \nFood Metal Can \nMedals \nMetal Bottle Caps \nClean Aluminium Tray/Foil \nNon-Food Metal containers \n -Paint Containers \n -Paint Cans "+
+            "\nMetal Cutlery \nSteel Wool \nMetal Accessories",
             isPositive = true
         )
         InfoCard(
             title = "Cannot be recycled",
-            text = "bla bla bla",
+            text = "Rusty Metal Cans \nDirty Aluminium Foil/Tray",
             isPositive = false
         )
     }
@@ -373,12 +368,14 @@ fun GlassGuideContent(){
 
         InfoCard(
             title = "Can be recycled",
-            text = "bla bla",
+            text = "Beverage Glass Bottles \nFood Glass Bottle \nCosmetic Glass Bottle \nPerfume Glass Bottle \nMedicine Glass Bottle \nSupplement Glass Bottle "+
+            "\nGeneral Glassware ",
             isPositive = true
         )
         InfoCard(
             title = "Cannot be recycled",
-            text = "bla bla bla",
+            text = "Borosilicate Glassware \nPyrex Glassware \nBakeware \nTempered Glass \nOven-Safe Food Containers \nCrystal Glass, \nGlass with Metal Wires" +
+            "\nWindows \nMirrors \nCeramics \nLight Bulbs",
             isPositive = false
         )
     }
