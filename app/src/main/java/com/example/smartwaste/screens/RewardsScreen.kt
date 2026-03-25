@@ -108,7 +108,10 @@ fun RewardScreen(userPoints: Int) {
     if (selectedReward !=null) {
         AlertDialog(
             onDismissRequest = {selectedReward = null},
-            title = {Text(text ="Claim Voucher?")},
+            containerColor = Color.White,
+            titleContentColor = Color(0xFF1B5E20),
+            textContentColor = Color.DarkGray,
+            title = {Text(text ="Claim Voucher?", fontWeight = FontWeight.Bold)},
             text = {Text(text= "Are you sure you want to sepnd ${selectedReward!!.cost} points on ${selectedReward!!.title}?")},
             confirmButton = {
                 Button(onClick = {
@@ -129,10 +132,21 @@ fun RewardScreen(userPoints: Int) {
                         Firebase.firestore.collection("users").document(uid).collection("logs").add(logData)
                     }
                     selectedReward = null
-                }) { Text("Yes")}
+                },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2E7D32),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Yes", fontWeight = FontWeight.Bold)
+                }
             },
             dismissButton = {
-                OutlinedButton(onClick={selectedReward = null}) { Text("No")}
+                TextButton(
+                    onClick= {selectedReward = null}
+                ){
+                    Text("No", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                }
             }
         )
     }

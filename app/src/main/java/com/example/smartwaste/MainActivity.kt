@@ -526,55 +526,77 @@ fun Scanner(
                 showDialog = false
                 classificationResult = null
             },
+            containerColor = Color.White,
+            iconContentColor = Color(0xFF2E7D32),
+            titleContentColor = Color(0xFF1B5E20),
             icon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_camera_alt),
                     contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    modifier = Modifier.size(32.dp)
                 )
             },
-            title = { Text("Classification Result") },
+            title = { Text("Classification Result", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ){
-                    Text("Your waste is classified as:", fontSize = 16.sp)
+                    Text("Your waste is classified as:", color = Color.DarkGray)
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = classificationResult?.replace("_"," ")?.uppercase() ?: "Unknown", //This one is just to replace the labelling of underscore to space so it looks better
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 16.dp)
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF2E7D32)
                     )
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val rawResult = classificationResult ?: ""
-                        showDialog = false
-                        classificationResult = null
-                        val guideID = when(rawResult.lowercase()) {
-                            "food_waste" -> "food"  //This is because food_waste label does not match the ID in DisposalGuide
-                            else -> rawResult.lowercase()
-                        }
-                        onNavigateToGuideDetail(guideID)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ){
+                    OutlinedButton(
+                        onClick = {
+                            showDialog = false
+                            classificationResult = null
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end=8.dp),
+                        colors= ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32)),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32)),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
+                    ){
+                        Text("OK", fontWeight = FontWeight.Bold)
                     }
-                ) {
-                    Text("View Guide")
+                    Button(
+                        onClick = {
+                            val rawResult = classificationResult ?: ""
+                            showDialog = false
+                            classificationResult = null
+                            val guideID = when(rawResult.lowercase()) {
+                                "food_waste" -> "food"  //This is because food_waste label does not match the ID in DisposalGuide
+                                else -> rawResult.lowercase()
+                            }
+                            onNavigateToGuideDetail(guideID)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start=8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2E7D32),
+                            contentColor = Color.White
+                        ),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
+                    ) {
+                        Text("View Guide", fontWeight = FontWeight.Bold)
+                    }
                 }
             },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        showDialog = false
-                        classificationResult = null
-                    }
-                ){
-                    Text("OK")
-                }
-            }
         )
     }
 }
