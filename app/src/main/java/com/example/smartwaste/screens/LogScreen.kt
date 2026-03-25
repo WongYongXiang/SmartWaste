@@ -75,7 +75,7 @@ fun LogsScreen(){
                             Text(text=dateString, style = MaterialTheme.typography.bodySmall)
                         }
                         Text(
-                            text = "$amountPrefix${log.amount} pts",
+                            text = "   $amountPrefix${log.amount} pts",
                             color = amountColor,
                             fontWeight = FontWeight.Bold
                         )

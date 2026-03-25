@@ -73,6 +73,9 @@ import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.rememberMarkerState
 import android.util.Log
+import androidx.compose.foundation.border
+import com.example.smartwaste.screens.LogsScreen
+import com.example.smartwaste.screens.RewardScreen
 
 
 class MainActivity : ComponentActivity() {
@@ -176,36 +179,17 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-               title = {
-                   Text(
-                       when {
-                           currentScreen == "scanner" -> "Smart Waste"
-                           currentScreen == "profile" -> "My Profile"
-                           currentScreen == "guides" -> "Disposal Guides"
-                           currentScreen.startsWith("guideDetail_") -> "Guide Details"
-                           currentScreen == "quiz" -> "Take quiz"
-                           else -> "App"
-                       }
-                   )
-               },
+               title = { Text("SmartWaste")},
                 navigationIcon = {
-                    if (currentScreen != "scanner" && currentScreen != "quiz") {
-                        IconButton(onClick = {
-                            if (currentScreen.startsWith("guideDetail_")) {
-                                currentScreen = "guides"
-                            } else {
-                                currentScreen = "scanner"
-                            }
-                        }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    if (currentScreen.startsWith("guideDetail_")){
+                        IconButton(onClick = {currentScreen = "guides"}) {
+                            Icon(Icons.Default.ArrowBackIosNew, contentDescription = "Back")
                         }
                     }
                 },
-                actions = {
-                    if (currentScreen == "scanner") {
-                        IconButton(onClick = { currentScreen = "profile"}) {
-                            Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
-                        }
+                actions ={
+                    IconButton(onClick = {currentScreen = "profile"}) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -213,6 +197,77 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             )
+        },
+        floatingActionButtonPosition = FabPosition.Center,
+        floatingActionButton = {
+            if (currentScreen =="scanner") {
+                FloatingActionButton(
+                    onClick = {
+                        currentScreen = "scanner"
+                        triggerCamera = true
+                    },
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    shape = CircleShape
+                ) {
+                    Icon(
+                        painterResource(id = R.drawable.ic_camera_alt),
+                        contentDescription = "Scan"
+                    )
+                }
+            }
+        },
+        bottomBar = {
+            if(currentScreen != "quiz") {
+                BottomAppBar(
+                    actions = {
+                        IconButton(
+                            onClick = { currentScreen = "quiz" },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Create, contentDescription = "Quiz")
+                                Text("Quiz", fontSize = 10.sp)
+                            }
+                        }
+                        IconButton(
+                            onClick = { currentScreen = "guides" },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Info, contentDescription = "Guides")
+                                Text("Guide", fontSize = 10.sp)
+                            }
+                        }
+                        IconButton(
+                            onClick = { currentScreen = "scanner" },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Home, contentDescription = "Home")
+                                Text("Home", fontSize = 10.sp)
+                            }
+                        }
+                        IconButton(
+                            onClick = { currentScreen = "rewards" },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.Star, contentDescription = "Rewards")
+                                Text("Rewards", fontSize = 10.sp)
+                            }
+                        }
+                        IconButton(
+                            onClick = { currentScreen = "logs" },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.List, contentDescription = "Logs")
+                                Text("Logs", fontSize = 10.sp)
+                            }
+                        }
+                    }
+                )
+            }
         }
     ) { paddingValues ->
         Box(modifier = Modifier.padding(paddingValues)) {
@@ -221,11 +276,11 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                     Scanner(
                         classifier = classifier,
                         points = userPoints,
-                        onNavigateToGuides = { currentScreen = "guides"},
+                        triggerCamera = triggerCamera,
+                        onCameraTriggered = {triggerCamera = false},
                         onNavigateToGuideDetail = { guideId ->
                             currentScreen = "guideDetail_$guideId"
-                        },
-                        onNavigateToQuiz = {currentScreen = "quiz"}
+                        }
                     )
                 }
                 currentScreen == "profile" -> {
@@ -254,6 +309,13 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                                     .addOnSuccessListener {
                                         Toast.makeText(context, "Earned $pointsEarned points!",Toast.LENGTH_SHORT).show()
                                     }
+                                val logData = hashMapOf(
+                                    "title" to "Completed Quiz",
+                                    "amount" to pointsEarned,
+                                    "date" to System.currentTimeMillis()
+                                )
+                                Firebase.firestore.collection("users").document(uid)
+                                    .collection("logs").add(logData)
                             }
 
 
@@ -262,6 +324,8 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                             onNavigateBack = {currentScreen = "scanner"}
                         )
                 }
+                currentScreen == "rewards" -> RewardScreen(userPoints = userPoints)
+                currentScreen == "logs" -> LogsScreen()
             }
         }
 
@@ -272,9 +336,9 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
 fun Scanner(
     classifier: ImageClassifier,
     points: Int,
-    onNavigateToGuides: () -> Unit,
+    triggerCamera: Boolean,
+    onCameraTriggered: () -> Unit,
     onNavigateToGuideDetail: (String) -> Unit,
-    onNavigateToQuiz: () -> Unit
 ) {
     val context = LocalContext.current
     //Quiz
@@ -337,100 +401,57 @@ fun Scanner(
             }
         }
     )
+    LaunchedEffect(triggerCamera) {
+        if (triggerCamera) {
+            onCameraTriggered()
+            when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)){
+                PackageManager.PERMISSION_GRANTED -> {
+                    imageUri = context.createImageUri()
+                    cameraLauncher.launch(imageUri)
+                }
+                else -> permissionLauncher.launch(Manifest.permission.CAMERA)
+            }
+        }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(24.dp),
+            .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Surface(
-            shape = RoundedCornerShape(50),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.padding(top=16.dp)
+        verticalArrangement = Arrangement.Center
+    ){
+        Box(
+            modifier = Modifier
+                .size(250.dp)
+                .background(Color.Transparent, shape = CircleShape)
+                .border(6.dp, MaterialTheme.colorScheme.primary, CircleShape),
+            contentAlignment = Alignment.Center
         ){
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
             ){
-                Icon(
-                    painter = painterResource(R.drawable.ic_camera_alt),
-                    contentDescription = "Points",
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "$points Points",
-                    fontSize = 22.sp,
+                    text = "$points",
+                    fontSize = 80.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Points",
+                    fontSize = 24.sp,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }
-        Spacer(modifier = Modifier.weight(0.8f))
-
-
-        Button(
-            onClick = onNavigateToQuiz,
-            enabled = canPlayQuiz,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.secondary
-            )
-        ){
-            Text(
-                text = if (canPlayQuiz) "Take the daily quiz for points!" else "Come back tomorrow for more points",
-                fontSize = 16.sp
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Scan button
-        Button(
-            onClick = {
-                // Check if we have permission. If not, ask for it.
-                // If we do, launch the camera directly.
-                when (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)) {
-                    PackageManager.PERMISSION_GRANTED -> {
-                        imageUri = context.createImageUri() // Get a new URI
-                        cameraLauncher.launch(imageUri)
-                    }
-
-                    else -> {
-                        permissionLauncher.launch(Manifest.permission.CAMERA)
-                    }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_camera_alt),
-                contentDescription = "Scan Icon",
-                modifier = Modifier.size(24.dp)
-            )
-            Text(
-                text = " Scan Waste",
-                fontSize = 18.sp,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-
-        // Guides Button
-        OutlinedButton(
-            onClick = onNavigateToGuides,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(60.dp)
-        ) {
-            Text(text = "Browse Disposal Guides", fontSize = 18.sp)
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(64.dp))
+        Text(
+            text = "Take daily quiz to\nget more points",
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.secondary,
+            fontWeight = FontWeight.Medium
+        )
     }
 
     // Results

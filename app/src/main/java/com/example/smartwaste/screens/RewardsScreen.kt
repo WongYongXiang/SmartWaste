@@ -1,11 +1,13 @@
 package com.example.smartwaste.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.Firebase
@@ -25,6 +27,7 @@ fun RewardScreen(userPoints: Int) {
 
     var selectedReward by remember { mutableStateOf<RewardItem?>(null) }
     var showInsufficientPoints by remember {mutableStateOf(false)}
+    val context = LocalContext.current
 
     Column(modifier = Modifier
         .fillMaxSize()
@@ -67,8 +70,12 @@ fun RewardScreen(userPoints: Int) {
                 Button(onClick = {
                     val uid = Firebase.auth.currentUser?.uid
                     if(uid != null) {
+                        val claimedRewardName = selectedReward!!.title
                         Firebase.firestore.collection("users").document(uid)
                             .update("points", com.google.firebase.firestore.FieldValue.increment(-selectedReward!!.cost.toLong()))
+                            .addOnSuccessListener {
+                                Toast.makeText(context, "$claimedRewardName claimed!", Toast.LENGTH_SHORT).show()
+                            }
 
                         val logData = hashMapOf(
                             "title" to "Claimed ${selectedReward!!.title}",
