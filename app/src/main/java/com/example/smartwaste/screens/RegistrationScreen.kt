@@ -1,11 +1,16 @@
 package com.example.smartwaste.screens
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -27,35 +32,59 @@ fun RegistrationScreen(onRegistrationSuccess: () -> Unit){
     var errorMessage by remember { mutableStateOf<String?>(null)}
     var isLoginMode by remember { mutableStateOf(true)}
     val auth = Firebase.auth
+    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .background(Color(0xFFFAFCFA))
+            .pointerInput(Unit){
+                detectTapGestures(onTap ={
+                    focusManager.clearFocus()
+                })
+            }
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text =  if (isLoginMode) "Login" else " Create an account",
+            text =  if (isLoginMode) "Welcome Back!" else " Join SmartWaste today!",
             fontSize = 32.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF1B5E20)
+        )
+        Text(
+            text =  if (isLoginMode) "Login" else " Create an account",
+            fontSize = 16.sp,
+            color = Color(0xFF2E7D32),
+            modifier = Modifier.padding(bottom = 32.dp)
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        val textFieldColors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Color(0xFF2E7D32),
+            focusedLabelColor = Color(0xFF2E7D32),
+            cursorColor = Color(0xFF2E7D32),
+            unfocusedContainerColor = Color.White,
+            focusedContainerColor = Color.White,
+            focusedTextColor = Color(0xFF1B5E20),
+            unfocusedTextColor = Color.DarkGray
+        )
 
         if (!isLoginMode) {
             OutlinedTextField(
                 value = username,
                 onValueChange = { username = it},
                 label = { Text("Username") },
-                modifier = Modifier.fillMaxWidth()
+                colors = textFieldColors,
+                modifier = Modifier.fillMaxWidth().padding(bottom =8.dp)
             )
         }
         OutlinedTextField(
             value = email,
             onValueChange = { email = it},
             label = { Text("Email") },
-            modifier = Modifier.fillMaxWidth()
+            colors = textFieldColors,
+            modifier = Modifier.fillMaxWidth().padding(bottom =8.dp)
         )
         OutlinedTextField(
             value = password,
@@ -64,10 +93,11 @@ fun RegistrationScreen(onRegistrationSuccess: () -> Unit){
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 TextButton(onClick = {passwordVisible = !passwordVisible}){
-                    Text(text = if (passwordVisible) "Hide" else "Show")
+                    Text(text = if (passwordVisible) "Hide" else "Show", color =Color(0xFF2E7D32))
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            colors = textFieldColors,
+            modifier = Modifier.fillMaxWidth().padding(bottom =8.dp)
         )
         if (!isLoginMode) {
             OutlinedTextField(
@@ -77,21 +107,23 @@ fun RegistrationScreen(onRegistrationSuccess: () -> Unit){
                 visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     TextButton(onClick = {confirmPasswordVisible = !confirmPasswordVisible}){
-                        Text(text = if (confirmPasswordVisible) "Hide" else "Show")
+                        Text(text = if (confirmPasswordVisible) "Hide" else "Show", color =Color(0xFF2E7D32))
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
+                colors = textFieldColors,
+                modifier = Modifier.fillMaxWidth().padding(bottom =8.dp)
             )
         }
 
         if (errorMessage != null) {
-            Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
+            Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical =8.dp))
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Button(
             onClick = {
+                focusManager.clearFocus()
                 if (email.isBlank() || password.isBlank()) {
                     errorMessage = "Please fill in all fields."
                 } else {
@@ -153,7 +185,11 @@ fun RegistrationScreen(onRegistrationSuccess: () -> Unit){
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth().height(50.dp)
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF2E7D32),
+                contentColor = Color.White
+            ),
+            modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
             Text(if (isLoginMode) "Login" else "Register")
         }
@@ -166,7 +202,8 @@ fun RegistrationScreen(onRegistrationSuccess: () -> Unit){
         }) {
             Text(
                 text = if (isLoginMode) "Don't have an account? Register" else "Already have an account? Login",
-                fontSize = 16.sp
+                fontSize = 16.sp,
+                color = Color(0xFF2E7D32)
             )
         }
     }

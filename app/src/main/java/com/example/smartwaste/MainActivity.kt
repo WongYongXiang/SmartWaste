@@ -72,6 +72,7 @@ import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.rememberMarkerState
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.SpanStyle
@@ -233,54 +234,72 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
         bottomBar = {
             if(currentScreen != "quiz") {
                 BottomAppBar(
-                    modifier = Modifier.navigationBarsPadding(),
                     containerColor = Color.White,
                     contentColor = Color(0xFF2E7D32),
                     actions = {
-                        IconButton(
-                            onClick = { currentScreen = "quiz" },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Create, contentDescription = "Quiz")
-                                Text("Quiz", fontSize = 10.sp)
-                            }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable{currentScreen = "quiz"}
+                                .padding(vertical = 6.dp)
+
+                        ){
+                            Icon(Icons.Default.Create, contentDescription = "Quiz")
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Quiz", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
-                        IconButton(
-                            onClick = { currentScreen = "guides" },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Info, contentDescription = "Guides")
-                                Text("Guide", fontSize = 10.sp)
-                            }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable{currentScreen = "guides"}
+                                .padding(vertical = 6.dp)
+
+                        ){
+                            Icon(Icons.Default.Info, contentDescription = "Guides")
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Guides", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
-                        IconButton(
-                            onClick = { currentScreen = "scanner" },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Home, contentDescription = "Home")
-                                Text("Home", fontSize = 10.sp)
-                            }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable{currentScreen = "scanner"}
+                                .padding(vertical = 6.dp)
+
+                        ){
+                            Icon(Icons.Default.Home, contentDescription = "Home")
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Home", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
-                        IconButton(
-                            onClick = { currentScreen = "rewards" },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Star, contentDescription = "Rewards")
-                                Text("Rewards", fontSize = 10.sp)
-                            }
+
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable{currentScreen = "rewards"}
+                                .padding(vertical = 6.dp)
+
+                        ){
+                            Icon(Icons.Default.Star, contentDescription = "Rewards")
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Rewards", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
-                        IconButton(
-                            onClick = { currentScreen = "logs" },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.List, contentDescription = "Logs")
-                                Text("Logs", fontSize = 10.sp)
-                            }
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable{currentScreen = "logs"}
+                                .padding(vertical = 6.dp)
+
+                        ){
+                            Icon(Icons.Default.List, contentDescription = "Logs")
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text("Logs", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 )

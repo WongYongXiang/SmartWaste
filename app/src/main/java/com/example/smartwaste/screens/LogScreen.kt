@@ -89,8 +89,16 @@ fun LogsScreen(){
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ){
-                        Column{
-                            Text(text=log.title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF1B5E20))
+                        Column(
+                            modifier = Modifier.weight(1f).padding(end=8.dp)
+                        ){
+                            Text(
+                                text=log.title,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = Color(0xFF1B5E20),
+                                maxLines =  2
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(text=dateString, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                         }
@@ -98,7 +106,8 @@ fun LogsScreen(){
                             text = "   $amountPrefix${log.amount} pts",
                             color = amountColor,
                             fontWeight = FontWeight.ExtraBold,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            maxLines = 1
                         )
                     }
                 }

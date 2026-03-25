@@ -1,6 +1,10 @@
 package com.example.smartwaste.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,23 +28,27 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .background(Color(0xFFFAFCFA))
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         if (isQuizFinished){
-            Spacer(modifier = Modifier.height(40.dp))
-            Text("Quiz Complete!", fontSize = 30.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(60.dp))
+            Icon(Icons.Default.CheckCircleOutline, contentDescription = null, tint = Color(0xFFFBC02D), modifier = Modifier.size(80.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("Quiz Complete!", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = Color(0xFF1B5E20))
             Spacer(modifier = Modifier.height(16.dp))
-            Text("You have scored $score / 5 questions correct", fontSize = 24.sp, color = MaterialTheme.colorScheme.primary)
-            Spacer(modifier = Modifier.height(10.dp))
-            Text("You have earned ${score*20} points!", fontSize = 20.sp)
-            Spacer(modifier = Modifier.height(40.dp))
+            Text("You have scored $score / 5 questions correct", fontSize = 24.sp, color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text("You have earned ${score*20} points!", fontSize = 20.sp, color = Color.DarkGray)
+            Spacer(modifier = Modifier.height(48.dp))
 
             Button(
                 onClick = {onQuizComplete(score*20)},
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
+                modifier = Modifier.fillMaxWidth().height(56.dp)
             ){
-                Text("Return", fontSize=18.sp)
+                Text("Return", fontSize=18.sp, fontWeight = FontWeight.Bold)
             }
 
         } else {
@@ -49,17 +57,20 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
             Text(
                 text = "Question ${currentQuestionsIndex +1} of 5",
                 fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFFAFCFA),
                 modifier = Modifier.align(Alignment.Start)
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             Text(
                 text = currentQuestion.question,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color(0xFF1B5E20),
+                textAlign = TextAlign.Center,
+                lineHeight = 32.sp
             )
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(40.dp))
 
             currentQuestion.options.forEachIndexed { index, optionText ->
                 val isSelected = selectedAnswerIndex == index
@@ -69,15 +80,15 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
                     when {
                         isCorrect -> Color(0xFF4CAF50) //Correct ans will be highlighted (GREEN)
                         isSelected && !isCorrect -> Color(0xFFD32F2F) //wrong choice highlighted (RED)
-                        else -> MaterialTheme.colorScheme.surfaceVariant
+                        else -> Color(0xFFE8F5E9)
                     }
                 } else {
-                    MaterialTheme.colorScheme.surfaceVariant
+                    Color(0xFFE8F5E9)
                 }
                 val textColor = if (showExplanation && (isCorrect || (isSelected && !isCorrect))) {
                     Color.White
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    Color(0xFF1B5E20)
                 }
                 Button(
                     onClick = {
@@ -88,26 +99,34 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = buttonColor),
+                    shape = RoundedCornerShape(16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(vertical = 8.dp)
-                        .height(60.dp)
+                        .height(65.dp)
                 ) {
                     Text(
                         text = optionText,
                         color = textColor,
                         fontSize = 16.sp,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
                 if (showExplanation) {
                     Spacer(modifier = Modifier.height(24.dp))
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(2.dp),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
                         Text(
                             text = currentQuestion.explanation,
                             modifier = Modifier.padding(16.dp),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = Color.DarkGray,
+                            fontSize = 15.sp,
+                            lineHeight = 22.sp
                         )
                     }
                     Spacer(modifier = Modifier.weight(1f))
@@ -120,10 +139,16 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
                             } else {
                                 isQuizFinished = true
                             }
-                        }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2E7D32),
+                            contentColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
                     ){
-                        Text(if(currentQuestionsIndex< 4) "Next Question" else "See Results")
+                        Text(if(currentQuestionsIndex< 4) "Next Question" else "See Results", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }

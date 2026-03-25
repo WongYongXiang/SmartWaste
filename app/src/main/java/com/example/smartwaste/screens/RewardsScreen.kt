@@ -60,7 +60,7 @@ fun RewardScreen(userPoints: Int) {
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 20.dp)
+                    .padding(vertical = 8.dp)
 
             ){
                 Row(
@@ -70,7 +70,10 @@ fun RewardScreen(userPoints: Int) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ){
-                    Row(verticalAlignment = Alignment.CenterVertically){
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f).padding(end=8.dp)
+                    ){
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Reward",
@@ -78,7 +81,13 @@ fun RewardScreen(userPoints: Int) {
                             modifier = Modifier.size(24.dp)
                         )
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(text= reward.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color(0XFF1B5E20))
+                        Text(
+                            text= reward.title,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0XFF1B5E20),
+                            maxLines = 2
+                        )
                     }
                     Surface(
                         shape = RoundedCornerShape(12.dp),
@@ -88,7 +97,8 @@ fun RewardScreen(userPoints: Int) {
                             text= "${reward.cost} pts",
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             color = Color(0xFF2E7D32),
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
                         )
                     }
                 }

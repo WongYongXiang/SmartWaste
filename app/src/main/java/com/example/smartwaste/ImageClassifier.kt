@@ -72,24 +72,23 @@ class ImageClassifier(context: Context) {
 
         // Preprocessing of image
         // Scale the bitmap to the model's input size (224x224)
-        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, INPUT_WIDTH, INPUT_HEIGHT, false)
+        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, 224, 224, true)
 
         // Convert the bitmap to a Tensor, applying the normalization
         val inputTensor = TensorImageUtils.bitmapToFloat32Tensor(
             resizedBitmap,
-            floatArrayOf(MEAN_R, MEAN_G, MEAN_B),
-            floatArrayOf(STD_R, STD_G, STD_B)
+            TensorImageUtils.TORCHVISION_NORM_MEAN_RGB,
+            TensorImageUtils.TORCHVISION_NORM_STD_RGB
         )
-
-        // To run the result
-        val outputTensor: Tensor = model!!.forward(IValue.from(inputTensor)).toTensor()
+        val inputs = IValue.from(inputTensor)
+        val outputs = model!!.forward(inputs).toTensor()
 
         // Process the result and obtain the scores
-        val scores: FloatArray = outputTensor.dataAsFloatArray
+        val scores: FloatArray = outputs.getDataAsFloatArray()
 
         // Find the index with the highest score
         var maxScore = -Float.MAX_VALUE
-        var maxScoreIdx = -1
+        var maxScoreIdx = 0
         for (i in scores.indices) {
             if (scores[i] > maxScore) {
                 maxScore = scores[i]
@@ -97,11 +96,6 @@ class ImageClassifier(context: Context) {
             }
         }
 
-        // Return the corresponding label with the highest score
-        return if (maxScoreIdx != -1 && maxScoreIdx < labels.size) {
-            labels[maxScoreIdx]
-        } else {
-            "Unknown"
-        }
+       return labels[maxScoreIdx]
     }
 }

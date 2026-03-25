@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.CheckCircle
@@ -44,22 +45,25 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
+import com.example.smartwaste.R
 
 
 data class DisposalGuide(
     val id: String,
     val title: String,
     val categories: String,
-    val description: String
+    val description: String,
+    val imageResId: Int
 )
 
 
 val guideList = listOf(
-    DisposalGuide("food", "Food Waste", "Organics, Compost", "Learn how to properly seperate food scraps..."),
-    DisposalGuide("paper", "Paper Product", "Recyclables", "Used papers stacking up? Not sure what to do with it? Find out more... "),
-    DisposalGuide("plastic", "Plastics", "Recyclables", "Do you know not all plastics are equal? Find out more here..."),
-    DisposalGuide("metal", "Metals", "Recyclables", "Aluminum cans and tin foil should be rinsed and look out for sharp edges..."),
-    DisposalGuide("glass", "Glass", "Recyclables", "Glass never quits. Recycle to bring new life to them...")
+    DisposalGuide("food", "Food Waste", "Organics, Compost", "Learn how to properly seperate food scraps...", R.drawable.food_waste_logo),
+    DisposalGuide("paper", "Paper Product", "Recyclables", "Used papers stacking up? Not sure what to do with it? Find out more... ",R.drawable.paper_logo),
+    DisposalGuide("plastic", "Plastics", "Recyclables", "Do you know not all plastics are equal? Find out more here...",R.drawable.plastic_logo),
+    DisposalGuide("metal", "Metals", "Recyclables", "Aluminum cans and tin foil should be rinsed and look out for sharp edges...", R.drawable.metal_logo),
+    DisposalGuide("glass", "Glass", "Recyclables", "Glass never quits. Recycle to bring new life to them...", R.drawable.glass_logo)
 )
 
 @Composable
@@ -142,11 +146,12 @@ fun GuideCard(
                     .background(Color(0xFFE8F5E9)),
                 contentAlignment = Alignment.Center
             ){
-                Icon(
-                    Icons.Default.DeleteSweep,
-                    contentDescription = null,
-                    tint = Color(0xFF2E7D32),
-                    modifier = Modifier.size(48.dp))
+                Image(
+                    painter = painterResource(id = guide.imageResId),
+                    contentDescription = guide.title,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
             Column(
                 modifier = Modifier
