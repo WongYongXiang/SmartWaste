@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
@@ -73,9 +72,11 @@ import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.rememberMarkerState
 import android.util.Log
-import androidx.compose.foundation.border
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import com.example.smartwaste.screens.LogsScreen
 import com.example.smartwaste.screens.RewardScreen
 
@@ -180,50 +181,61 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
     // Screen layout
     Scaffold(
         topBar = {
-            TopAppBar(
-               title = { Text("SmartWaste")},
-                navigationIcon = {
-                    if (currentScreen.startsWith("guideDetail_")){
-                        IconButton(onClick = {currentScreen = "guides"}) {
-                            Icon(Icons.Default.ArrowBackIosNew, contentDescription = "Back")
+            CenterAlignedTopAppBar(
+                title = { Text(
+                    text= buildAnnotatedString {
+                        withStyle(style = SpanStyle(color = Color(0xFF1B55E20), fontWeight = FontWeight.ExtraBold)){
+                            append("Smart")
                         }
+                        withStyle(style = SpanStyle(color = Color(0xFF66BB6A), fontWeight = FontWeight.ExtraBold)){
+                            append("Waste")
+                        }
+                    },
+                    fontSize = 26.sp
+                )
+            },
+            navigationIcon = {
+                if (currentScreen.startsWith("guideDetail_")){
+                    IconButton(onClick = {currentScreen = "guides"}) {
+                        Icon(Icons.Default.ArrowBackIosNew, contentDescription = "Back")
                     }
-                },
-                actions ={
-                    IconButton(onClick = {currentScreen = "profile"}) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFFAFCFA),
-                    titleContentColor = Color(0xFF2E7D32),
-                    actionIconContentColor = Color(0xFF2E7D32)
+                }
+            },
+            actions ={
+                IconButton(onClick = {currentScreen = "profile"}) {
+                    Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
+                }
+            },
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = Color(0xFFFAFCFA)
                 )
             )
         },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
             if (currentScreen =="scanner") {
-                FloatingActionButton(
+                ExtendedFloatingActionButton(
                     onClick = {
                         currentScreen = "scanner"
                         triggerCamera = true
                     },
                     containerColor = Color(0xFF2E7D32),
                     contentColor = Color.White,
-                    shape = CircleShape,
-                    elevation = FloatingActionButtonDefaults.elevation(8.dp)
-                ) {
-                    Icon(
-                        painterResource(id = R.drawable.ic_camera_alt),
-                        contentDescription = "Scan"
-                    )
-                }
+                    elevation = FloatingActionButtonDefaults.elevation(8.dp),
+                    icon = {Icon(
+                            painterResource(id = R.drawable.ic_camera_alt),
+                    contentDescription = "Scan"
+                    )},
+                    text = {Text("Scan Waste", fontSize = 16.sp, fontWeight = FontWeight.Bold)}
+                )
             }
         },
         bottomBar = {
             if(currentScreen != "quiz") {
                 BottomAppBar(
+                    modifier = Modifier.navigationBarsPadding(),
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF2E7D32),
                     actions = {
                         IconButton(
                             onClick = { currentScreen = "quiz" },

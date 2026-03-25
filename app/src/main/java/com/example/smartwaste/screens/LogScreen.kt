@@ -58,7 +58,13 @@ fun LogsScreen(){
         .background(Color(0xFFFAFCFA))
         .padding(16.dp)
     ){
-        Text(text= "Transaction History", style = MaterialTheme.typography.headlineMedium)
+        Text(text= "Transaction History",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = Color(0xFF1B5E20),
+            modifier = Modifier
+                .padding(bottom=16.dp, top = 8.dp)
+        )
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn{

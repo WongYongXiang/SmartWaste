@@ -58,7 +58,8 @@ val guideList = listOf(
     DisposalGuide("food", "Food Waste", "Organics, Compost", "Learn how to properly seperate food scraps..."),
     DisposalGuide("paper", "Paper Product", "Recyclables", "Used papers stacking up? Not sure what to do with it? Find out more... "),
     DisposalGuide("plastic", "Plastics", "Recyclables", "Do you know not all plastics are equal? Find out more here..."),
-    DisposalGuide("metal", "Metals", "Recyclables", "Aluminum cans and tin foil should be rinsed and look out for sharp edges...")
+    DisposalGuide("metal", "Metals", "Recyclables", "Aluminum cans and tin foil should be rinsed and look out for sharp edges..."),
+    DisposalGuide("glass", "Glass", "Recyclables", "Glass never quits. Recycle to bring new life to them...")
 )
 
 @Composable
@@ -194,6 +195,7 @@ fun GuideDetailScreen(guideId:String) {
                     "food" -> FoodGuideContent()
                     "paper" -> PaperGuideContent()
                     "metal" -> MetalGuideContent()
+                    "glass" -> GlassGuideContent()
                     else -> Text("Error guide content - You are not supposed to end up here")
                 }
                 Spacer(modifier = Modifier.height(80.dp))
@@ -324,6 +326,39 @@ fun MetalGuideContent(){
 
         StepItem("1","To add")
         StepItem("2","To add")
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "What can or cannot be recycled",
+            fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20)
+        )
+
+        InfoCard(
+            title = "Can be recycled",
+            text = "bla bla",
+            isPositive = true
+        )
+        InfoCard(
+            title = "Cannot be recycled",
+            text = "bla bla bla",
+            isPositive = false
+        )
+    }
+}
+
+@Composable
+fun GlassGuideContent(){
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Glass retains 100% of it's purity when you recycle them! However, be extremely careful when handling glass as they are fragile and are prone to expose sharp edges if broken.",
+            fontSize = 16.sp, lineHeight = 24.sp, color = Color.DarkGray
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("How to Recycle", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
+
+        StepItem("1","For containers and bottles, be sure to empty it's contents  and give it a quick rinse")
+        StepItem("2","If there are any removable plastic or plastic parts such as the cap of the bottle, recycle them seperately")
+        StepItem("3","Carefully place the intact into the recycling bin. Please don't throw them with force!")
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(
