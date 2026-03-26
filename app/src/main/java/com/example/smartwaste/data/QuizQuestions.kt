@@ -64,4 +64,34 @@ val fullQustionBank = listOf(
         correctAnswerIndex = 2,
         explanation = "Some metals are generally okay to be recycled!"
     ),
+    QuizQuestions(
+        question = "My disposable plastic cutlery is contaminated what should I recycle them?",
+        options = listOf("Yes, after cutting the part that is contaminated out and recycle the rest", "No, dispose them as general waste", "Just recycle it"),
+        correctAnswerIndex = 1,
+        explanation = "Do not recycle a product if they are contaminated, even if it is a recyclable product!"
+    ),
+    QuizQuestions(
+        question = "What item cannot be recycled?",
+        options = listOf("Glossy paper", "Envelope with plastic window", "Wax paper"),
+        correctAnswerIndex = 2,
+        explanation = "Dispose Wax paper as general waste!"
+    ),
+    QuizQuestions(
+        question = "Which of the following item can be recycled?",
+        options = listOf("Cosmetic glass bottle", "Tempered glass", "Crystal glass"),
+        correctAnswerIndex = 0,
+        explanation = "Please do not recycle tempered glass and crystal glass."
+    ),
+    QuizQuestions(
+        question = "Which of the following item can be recycled?",
+        options = listOf("Steel wool", "Tempered glass", "Wax paper"),
+        correctAnswerIndex = 0,
+        explanation = "Steel wool can be recycled!"
+    ),
+    QuizQuestions(
+        question = "What item cannot be recycled?",
+        options = listOf("Receipts", "Ceramics", "Steel wool"),
+        correctAnswerIndex = 2,
+        explanation = "Disposed Ceramics carefully and do not recycle them!"
+    )
 )
