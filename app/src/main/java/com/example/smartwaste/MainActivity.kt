@@ -72,9 +72,18 @@ import com.google.android.gms.maps.model.Gap
 import com.google.android.gms.maps.model.RoundCap
 import com.google.maps.android.compose.rememberMarkerState
 import android.util.Log
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.*
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Fill
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -458,35 +467,8 @@ fun Scanner(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ){
-        Box(
-            modifier = Modifier
-                .size(280.dp)
-                .shadow(16.dp, CircleShape, ambientColor = Color(0xFF2E7D32), spotColor = Color(0xFF2E7D32))
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFF66BB6A), Color(0xFF2E7D32))
-                    ),
-                    shape = CircleShape
-                ),
-                    contentAlignment = Alignment.Center
-        ){
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ){
-                Text(
-                    text = "$points",
-                    fontSize = 80.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
-                )
-                Text(
-                    text = "Points",
-                    fontSize = 24.sp,
-                    color = Color(0xFFE8F5E9),
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
+        AnimatedPointsBadge(points)
+
         Spacer(modifier = Modifier.height(56.dp))
 
         Card(
@@ -957,4 +939,137 @@ fun StaffDashBoard(onLogout: () -> Unit) {
 }
 }
 
+data class TrashItem(
+    val emoji:String,
+    val offsetX: Float,
+    val yOffset: Float,
+    val startRotation: Float,
+    val spinSpeed: Float
+)
+
+@Composable
+fun AnimatedPointsBadge(currentPoints: Int){
+    var isInitialLoad by remember {mutableStateOf(true)}
+    var displayedPoints by remember { mutableStateOf(currentPoints)}
+    var trashSwarm by remember { mutableStateOf<List<TrashItem>>(emptyList())}
+
+    val animatedScore = remember {Animatable(currentPoints.toFloat())}
+    val lidAngle = remember {Animatable(0f)}
+    val trashOffsetY = remember {Animatable(-200f)}
+    val trashAlpha = remember {Animatable(0f)}
+    val textAlpha = remember {Animatable(1f)}
+
+    LaunchedEffect(currentPoints) {
+        if(isInitialLoad){
+            animatedScore.snapTo(currentPoints.toFloat())
+            displayedPoints = currentPoints
+            isInitialLoad = false
+        } else if(currentPoints>displayedPoints){
+            val emojiPool = listOf("\uD83D\uDCC4", "\uD83E\uDD64","\uD83E\uDDC3","\uD83D\uDCC3","\uD83E\uDD6B","\uD83D\uDCE6", "\uD83D\uDDDE\uFE0F")
+            trashSwarm = List(10){
+                TrashItem(
+                    emoji = emojiPool.random(),
+                    offsetX = (-60..60).random().toFloat(),
+                    yOffset = (0..100).random().toFloat(),
+                    startRotation = (0..360).random().toFloat(),
+                    spinSpeed = listOf(-3f, -2f,2f,3f).random()
+                )
+            }
+
+            textAlpha.animateTo(0f, animationSpec =tween(400)) //make the points dissapear first
+            lidAngle.animateTo(55f, animationSpec = tween(600, easing = FastOutSlowInEasing)) //open lid
+
+            //make sure the waste dissapear in the point badge
+            trashOffsetY.snapTo(-250f)
+            trashAlpha.snapTo(1f)
+            trashOffsetY.animateTo(60f, animationSpec = tween(700, easing = LinearOutSlowInEasing))
+            trashAlpha.animateTo(0f, animationSpec = tween(300))
+
+            lidAngle.animateTo(0f, animationSpec = tween(600, easing = FastOutSlowInEasing)) //close lid
+
+            //bring points text back animation of score counting up after trash drop
+            textAlpha.animateTo(1f, animationSpec =tween(400))
+            animatedScore.animateTo(
+                targetValue = currentPoints.toFloat(),
+                animationSpec = tween(1500, easing = FastOutSlowInEasing)
+            )
+            displayedPoints =currentPoints
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .size(240.dp)
+            .shadow(16.dp, CircleShape, ambientColor = Color(0xFF2E7D32), spotColor= Color(0xFF2E7D32)),
+        contentAlignment = Alignment.Center
+    ){
+        if (trashAlpha.value >0f) {
+            trashSwarm.forEach { item ->
+                Text(
+                    text = item.emoji,
+                    fontSize = 24.sp,
+                    modifier = Modifier
+                        .graphicsLayer{
+                            translationX =item.offsetX.dp.toPx() //random speed that they fall
+                            translationY = trashOffsetY.value.dp.toPx() -item.yOffset.dp.toPx() // so they dont fall tgr
+                            rotationZ = item.startRotation + (trashOffsetY.value*item.spinSpeed) //rotate
+                            alpha = trashAlpha.value
+                        }
+                )
+            }
+        }
+
+        Canvas(modifier = Modifier.fillMaxSize()){
+            val radius = size.minDimension /2
+            val centerOffset = Offset(size.width/2, size.height/2)
+            val circleGradient = Brush.linearGradient(
+                colors = listOf(Color(0xFF66BB6A), Color(0xFF2E7D32)),
+                start = Offset.Zero,
+                end = Offset(size.width, size.height)
+            )
+            //bottom half of lid
+            drawArc(
+                brush = circleGradient,
+                startAngle = 0f,
+                sweepAngle = 180f,
+                useCenter = true,
+                size = Size(radius*2,radius*2),
+                topLeft = Offset(centerOffset.x-radius, centerOffset.y-radius),
+                style = Fill
+            )
+            //top half
+            rotate(
+                degrees = lidAngle.value,
+                pivot = Offset(centerOffset.x+radius, centerOffset.y)
+            ){
+                drawArc(
+                    brush = circleGradient,
+                    startAngle = 180f,
+                    sweepAngle = 180f,
+                    useCenter = true,
+                    size = Size(radius*2,radius*2),
+                    topLeft = Offset(centerOffset.x-radius, centerOffset.y-radius),
+                    style = Fill
+                )
+            }
+        }
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.graphicsLayer{alpha=textAlpha.value}
+        ){
+            Text(
+                text = animatedScore.value.toInt().toString(),
+                fontSize = 60.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
+            )
+            Text(
+                text = "Points",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color(0xFFE8F5E9)
+            )
+        }
+    }
+}
 
