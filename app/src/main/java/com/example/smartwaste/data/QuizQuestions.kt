@@ -91,7 +91,7 @@ val fullQustionBank = listOf(
     QuizQuestions(
         question = "What item cannot be recycled?",
         options = listOf("Receipts", "Ceramics", "Steel wool"),
-        correctAnswerIndex = 2,
+        correctAnswerIndex = 1,
         explanation = "Disposed Ceramics carefully and do not recycle them!"
     )
 )

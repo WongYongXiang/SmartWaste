@@ -175,6 +175,9 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
     var userPoints by remember { mutableStateOf(0)}
     var triggerCamera by remember {mutableStateOf(false)}
 
+    val context = LocalContext.current
+    val isTestingQuiz = true // To change to false after done with testing quiz because the quiz is supposed to be once a day
+
     //Real time listener for firestore to check the user points
     LaunchedEffect(Unit) {
         val uid = Firebase.auth.currentUser?.uid
@@ -212,8 +215,11 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                 }
             },
             actions ={
-                IconButton(onClick = {currentScreen = "profile"}) {
-                    Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
+                if (currentScreen != "quiz"){
+                    IconButton(onClick = {currentScreen = "profile"}) {
+                        Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
+
+                    }
                 }
             },
             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -251,7 +257,19 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable{currentScreen = "quiz"}
+                                .clickable{
+                                    val sharedPrefs = context.getSharedPreferences("SmartWastePrefs", Context.MODE_PRIVATE)
+                                    val lastPlayedDate = sharedPrefs.getString("lastQuizDate", "")
+                                    val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                                    if(isTestingQuiz){
+                                        currentScreen = "quiz"
+                                    } else if (lastPlayedDate == currentDate){
+                                        Toast.makeText(context, "You have already completed the quiz for today. Come back tomorrow!",
+                                            Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        currentScreen = "quiz"
+                                    }
+                                }
                                 .padding(vertical = 6.dp)
 
                         ){
@@ -386,12 +404,6 @@ fun Scanner(
     onNavigateToGuideDetail: (String) -> Unit,
 ) {
     val context = LocalContext.current
-    //Quiz
-    val sharedPrefs = context.getSharedPreferences("SmartWastePrefs", Context.MODE_PRIVATE)
-    val lastPlayedDate = sharedPrefs.getString("lastQuizDate", "")
-    val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-    //val canPlayQuiz = lastPlayedDate != currentDate //Uncomment for actual testing because of the date
-    val canPlayQuiz = true // To remove after done with testing quiz because the quiz is supposed to be once a day
 
     //For scanning of waste
     var imageUri by remember { mutableStateOf<Uri?>(null) }
@@ -535,50 +547,74 @@ fun Scanner(
                 }
             },
             confirmButton = {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ){
-                    OutlinedButton(
-                        onClick = {
-                            showDialog = false
-                            classificationResult = null
-                        },
+                Column(modifier = Modifier.fillMaxWidth()){
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(end=8.dp),
-                        colors= ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32)),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ){
-                        Text("OK", fontWeight = FontWeight.Bold)
+                        OutlinedButton(
+                            onClick = {
+                                showDialog = false
+                                classificationResult = null
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(end=8.dp),
+                            colors= ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32)),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32)),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
+                        ){
+                            Text("OK", fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = {
+                                val rawResult = classificationResult ?: ""
+                                showDialog = false
+                                classificationResult = null
+                                val guideID = when(rawResult.lowercase()) {
+                                    "food_waste" -> "food"  //This is because food_waste label does not match the ID in DisposalGuide
+                                    else -> rawResult.lowercase()
+                                }
+                                onNavigateToGuideDetail(guideID)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start=8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF2E7D32),
+                                contentColor = Color.White
+                            ),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
+                        ) {
+                            Text("View Guide", fontWeight = FontWeight.Bold)
+                        }
                     }
-                    Button(
+                    TextButton(
                         onClick = {
-                            val rawResult = classificationResult ?: ""
                             showDialog = false
                             classificationResult = null
-                            val guideID = when(rawResult.lowercase()) {
-                                "food_waste" -> "food"  //This is because food_waste label does not match the ID in DisposalGuide
-                                else -> rawResult.lowercase()
+                            if(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)== PackageManager.PERMISSION_GRANTED){
+                                imageUri = context.createImageUri()
+                                cameraLauncher.launch(imageUri)
+                            } else {
+                                permissionLauncher.launch(Manifest.permission.CAMERA)
                             }
-                            onNavigateToGuideDetail(guideID)
                         },
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(start=8.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF2E7D32),
-                            contentColor = Color.White
-                        ),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
-                    ) {
-                        Text("View Guide", fontWeight = FontWeight.Bold)
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF1B5E20))
+                    ){
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Scan Again",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier=Modifier.width(8.dp))
+                        Text(text="Scan Again", fontWeight = FontWeight.Bold)
                     }
                 }
-            },
+            }
         )
     }
 }
