@@ -183,6 +183,7 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
     var userPoints by remember { mutableStateOf(0)}
     var triggerCamera by remember {mutableStateOf(false)}
 
+    var lastQuizTime by remember{mutableStateOf(0L)}
     val context = LocalContext.current
     val isTestingQuiz = true // To change to false after done with testing quiz because the quiz is supposed to be once a day
 
@@ -275,21 +276,23 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                             modifier = Modifier
                                 .weight(1f)
                                 .clickable {
-                                    val sharedPrefs = context.getSharedPreferences(
-                                        "SmartWastePrefs",
-                                        Context.MODE_PRIVATE
-                                    )
-                                    val lastPlayedDate = sharedPrefs.getString("lastQuizDate", "")
-                                    val currentDate =
-                                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(
-                                            Date()
-                                        )
+                                    val currentTime = System.currentTimeMillis()
+                                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                    val lastQuizDateString = sdf.format(Date(lastQuizTime))
+                                    val currentDateString = sdf.format(Date(currentTime))
+
                                     if (isTestingQuiz) {
                                         navigateToBottomBarRoute("quiz")
-                                    } else if (lastPlayedDate == currentDate) {
+                                    } else if (lastQuizTime != 0L && lastQuizDateString == currentDateString) {
                                         Toast.makeText(
                                             context,
                                             "You have already completed the quiz for today. Come back tomorrow!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    } else if (currentTime < lastQuizTime) {
+                                        Toast.makeText(
+                                            context,
+                                            "Invalid time detected. Please set your clock to automatic.",
                                             Toast.LENGTH_SHORT
                                         ).show()
                                     } else {
@@ -297,7 +300,6 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                                     }
                                 }
                                 .padding(vertical = 6.dp)
-
                         ){
                             Icon(Icons.Default.Create, contentDescription = "Quiz")
                             Spacer(modifier = Modifier.height(2.dp))
@@ -391,13 +393,15 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                 val context = LocalContext.current
                 QuizScreen(
                     onQuizComplete = {pointsEarned ->
-                        val sharedPrefs = context.getSharedPreferences("SmartWastePrefs", Context.MODE_PRIVATE)
-                        val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                        sharedPrefs.edit().putString("lastQuizDate", currentDate).apply()
                         val uid = Firebase.auth.currentUser?.uid
                         if (uid != null) {
+                            val updates = hashMapOf<String, Any>(
+                                "points" to com.google.firebase.firestore.FieldValue.increment(pointsEarned.toLong()),
+                                "lastQuizDate" to com.google.firebase.firestore.FieldValue.serverTimestamp()
+                            )
+
                             Firebase.firestore.collection("users").document(uid)
-                                .update("points", com.google.firebase.firestore.FieldValue.increment(pointsEarned.toLong()))
+                                .update(updates)
                                 .addOnSuccessListener {
                                     Toast.makeText(context, "Earned $pointsEarned points!",Toast.LENGTH_SHORT).show()
                                 }
