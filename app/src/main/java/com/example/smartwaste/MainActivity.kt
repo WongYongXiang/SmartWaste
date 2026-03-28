@@ -74,7 +74,12 @@ import com.google.maps.android.compose.rememberMarkerState
 import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -84,6 +89,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -94,6 +100,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.smartwaste.screens.LogsScreen
 import com.example.smartwaste.screens.RewardScreen
+import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
@@ -113,23 +120,30 @@ class MainActivity : ComponentActivity() {
                     if (isLoggedIn) {
                         userRole = "Loading"
                         val uid = Firebase.auth.currentUser?.uid
+
                         if (uid != null) {
                             Firebase.firestore.collection("users").document(uid).get()
                                 .addOnSuccessListener {document ->
-                                    if (document != null && document.exists()) {
-                                        userRole = document.getString("role")?:"public"
+                                    val role = if (document != null && document.exists()) {
+                                        document.getString("role")?:"public"
                                     } else {
-                                        userRole = "public"
+                                         "public"
+                                    }
+                                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.Main) {
+                                        kotlinx.coroutines.delay(2500)
+                                        userRole = role
                                     }
                                 }
                                 .addOnFailureListener {
-                                    userRole = "public"
+                                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.Main) {
+                                        kotlinx.coroutines.delay(2500)
+                                        userRole = "public"
+                                    }
                                 }
-                        }
-                        else{
+                            }else{
                             userRole = "Unauthenticated"
                         }
-                    } else {
+                        }else {
                         userRole = "Unauthenticated"
                     }
                 }
@@ -141,7 +155,7 @@ class MainActivity : ComponentActivity() {
                         "Loading" -> {
                             Box(modifier = Modifier.fillMaxSize(),
                                 contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
+                                LoadingScreen()
                             }
                         }
                         "Unauthenticated" -> {
@@ -1144,6 +1158,103 @@ fun AnimatedPointsBadge(currentPoints: Int){
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Medium,
                 color = Color(0xFFE8F5E9)
+            )
+        }
+    }
+}
+
+data class LeafState(
+    val xPositionPercent: Float,
+    val duration: Int,
+    val delay: Int,
+    val size: androidx.compose.ui.unit.Dp,
+    val rotationStart: Float,
+    val swayAmount: Float
+)
+
+@Composable
+fun LoadingScreen(){
+    val leafCount = 20
+
+    val leaves = remember {
+        List(leafCount) {
+            LeafState(
+                xPositionPercent = (0..100).random() / 100f,
+                duration = (3000..6000).random(), // Falls between 3 to 6 seconds
+                delay = (0..4000).random(),       // Stagger the start times by a little
+                size = (24..48).random().dp,
+                rotationStart = (0..360).random().toFloat(),
+                swayAmount = (30..80).random().toFloat()
+            )
+        }
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFFAFCFA))
+    ) {
+        val screenWidthPx = with(LocalDensity.current) { maxWidth.toPx() }
+        val screenHeightPx = with(LocalDensity.current) { maxHeight.toPx() }
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ){
+            Text(
+                text = buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = Color(0xFF1B55E20), fontWeight = FontWeight.ExtraBold)) {
+                        append("Smart")
+                    }
+                    withStyle(style = SpanStyle(color = Color(0xFF66BB6A), fontWeight = FontWeight.ExtraBold)) {
+                        append("Waste")
+                    }
+                },
+                fontSize = 42.sp,
+                modifier = Modifier.shadow(4.dp, shape = RoundedCornerShape(8.dp), ambientColor = Color.White, spotColor = Color.White)
+            )
+        }
+        val infiniteTransition = rememberInfiniteTransition(label = "falling_leaves")
+
+        leaves.forEach { leaf ->
+            val yProgress by infiniteTransition.animateFloat(
+                initialValue = -0.2f,
+                targetValue = 1.2f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(leaf.duration, delayMillis = leaf.delay, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "y_fall"
+            )
+            val xSway by infiniteTransition.animateFloat(
+                initialValue = -leaf.swayAmount,
+                targetValue = leaf.swayAmount,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(leaf.duration / 3, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "x_sway"
+            )
+            val rotation by infiniteTransition.animateFloat(
+                initialValue = leaf.rotationStart,
+                targetValue = leaf.rotationStart + 360f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(leaf.duration, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "rotation"
+            )
+            Icon(
+                imageVector = Icons.Default.Eco,
+                contentDescription = null,
+                tint = Color(0xFF66BB6A).copy(alpha = 0.6f), // so that the logo not blocked
+                modifier = Modifier
+                    .size(leaf.size)
+                    .graphicsLayer {
+                        translationX = (leaf.xPositionPercent * screenWidthPx) + xSway
+                        translationY = yProgress * screenHeightPx
+                        rotationZ = rotation
+                    }
             )
         }
     }
