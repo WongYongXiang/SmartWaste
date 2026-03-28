@@ -1,10 +1,12 @@
 package com.example.smartwaste.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,7 +26,59 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
     var selectedAnswerIndex by remember { mutableStateOf<Int?>(null) }
     var showExplanation by remember { mutableStateOf(false) }
     var isQuizFinished by remember {mutableStateOf(false)}
+    var showExitDialog by remember {mutableStateOf(false)} // in case the user want to use back button to quit
 
+    BackHandler(enabled = !isQuizFinished) {
+        showExitDialog = true
+    }
+
+    if (showExitDialog){
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false},
+            containerColor = Color.White,
+            iconContentColor = Color(0xFF2E7D32),
+            titleContentColor = Color(0xFF1B5E20),
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Warning",
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = { Text("Exit quiz?", fontWeight = FontWeight.Bold)},
+            text ={
+                Text(
+                    text = "Are you sure? Your progress will not be saved and points will not be earned",
+                    color = Color.DarkGray,
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitDialog = false
+                        onNavigateBack()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD32F2F),
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Quit", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {showExitDialog = false},
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32))
+                ) {
+                    Text("Continue", fontWeight = FontWeight.Bold)
+                }
+            }
+        )
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()

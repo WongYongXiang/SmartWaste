@@ -87,6 +87,11 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.example.smartwaste.screens.LogsScreen
 import com.example.smartwaste.screens.RewardScreen
 
@@ -171,7 +176,10 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
-    var currentScreen by remember {mutableStateOf("scanner")}
+    val navController = rememberNavController()
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentScreen = navBackStackEntry?.destination?.route ?:"scanner"
+
     var userPoints by remember { mutableStateOf(0)}
     var triggerCamera by remember {mutableStateOf(false)}
 
@@ -188,6 +196,16 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                         userPoints = snapshot.getLong("points")?.toInt() ?: 0 //Set points to 0 if it does not exist (maybe its a new user)
                     }
                 }
+        }
+    }
+
+    val navigateToBottomBarRoute = { route: String ->
+        navController.navigate(route) {
+            popUpTo(navController.graph.findStartDestination().id){
+                saveState = true
+            }
+            launchSingleTop = true
+            restoreState = true
         }
     }
 
@@ -209,14 +227,14 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
             },
             navigationIcon = {
                 if (currentScreen.startsWith("guideDetail_")){
-                    IconButton(onClick = {currentScreen = "guides"}) {
+                    IconButton(onClick = {navController.navigateUp() }) {
                         Icon(Icons.Default.ArrowBackIosNew, contentDescription = "Back")
                     }
                 }
             },
             actions ={
                 if (currentScreen != "quiz"){
-                    IconButton(onClick = {currentScreen = "profile"}) {
+                    IconButton(onClick = {navController.navigate("profile")}) {
                         Icon(Icons.Default.AccountCircle, contentDescription = "Profile")
 
                     }
@@ -232,7 +250,6 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
             if (currentScreen =="scanner") {
                 ExtendedFloatingActionButton(
                     onClick = {
-                        currentScreen = "scanner"
                         triggerCamera = true
                     },
                     containerColor = Color(0xFF2E7D32),
@@ -257,17 +274,26 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable{
-                                    val sharedPrefs = context.getSharedPreferences("SmartWastePrefs", Context.MODE_PRIVATE)
+                                .clickable {
+                                    val sharedPrefs = context.getSharedPreferences(
+                                        "SmartWastePrefs",
+                                        Context.MODE_PRIVATE
+                                    )
                                     val lastPlayedDate = sharedPrefs.getString("lastQuizDate", "")
-                                    val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                                    if(isTestingQuiz){
-                                        currentScreen = "quiz"
-                                    } else if (lastPlayedDate == currentDate){
-                                        Toast.makeText(context, "You have already completed the quiz for today. Come back tomorrow!",
-                                            Toast.LENGTH_SHORT).show()
+                                    val currentDate =
+                                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(
+                                            Date()
+                                        )
+                                    if (isTestingQuiz) {
+                                        navigateToBottomBarRoute("quiz")
+                                    } else if (lastPlayedDate == currentDate) {
+                                        Toast.makeText(
+                                            context,
+                                            "You have already completed the quiz for today. Come back tomorrow!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     } else {
-                                        currentScreen = "quiz"
+                                        navigateToBottomBarRoute("quiz")
                                     }
                                 }
                                 .padding(vertical = 6.dp)
@@ -282,7 +308,7 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable{currentScreen = "guides"}
+                                .clickable { navigateToBottomBarRoute("guides") }
                                 .padding(vertical = 6.dp)
 
                         ){
@@ -295,7 +321,7 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable{currentScreen = "scanner"}
+                                .clickable { navigateToBottomBarRoute("scanner") }
                                 .padding(vertical = 6.dp)
 
                         ){
@@ -308,7 +334,7 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable{currentScreen = "rewards"}
+                                .clickable { navigateToBottomBarRoute("rewards") }
                                 .padding(vertical = 6.dp)
 
                         ){
@@ -320,7 +346,7 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
                             horizontalAlignment = Alignment.CenterHorizontally,
                             modifier = Modifier
                                 .weight(1f)
-                                .clickable{currentScreen = "logs"}
+                                .clickable { navigateToBottomBarRoute("logs") }
                                 .padding(vertical = 6.dp)
 
                         ){
@@ -333,65 +359,68 @@ fun MainScreen(classifier: ImageClassifier, onLogout: () -> Unit) {
             }
         }
     ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues)) {
-            when {
-                currentScreen == "scanner" -> {
-                    Scanner(
-                        classifier = classifier,
-                        points = userPoints,
-                        triggerCamera = triggerCamera,
-                        onCameraTriggered = {triggerCamera = false},
-                        onNavigateToGuideDetail = { guideId ->
-                            currentScreen = "guideDetail_$guideId"
-                        }
-                    )
-                }
-                currentScreen == "profile" -> {
-                    ProfileScreen(onLogout = onLogout)
-                }
-                currentScreen == "guides" -> {
-                    GuidesListScreen(onGuideClick = { guideId ->
-                        currentScreen = "guideDetail_$guideId"
-                    })
-                }
-                currentScreen.startsWith("guideDetail_") -> {
-                    val id = currentScreen.removePrefix("guideDetail_")
-                    GuideDetailScreen(guideId = id)
-                }
-                currentScreen == "quiz" -> {
-                    val context = LocalContext.current
-                    QuizScreen(
-                        onQuizComplete = {pointsEarned ->
-                            val sharedPrefs = context.getSharedPreferences("SmartWastePrefs", Context.MODE_PRIVATE)
-                            val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-                            sharedPrefs.edit().putString("lastQuizDate", currentDate).apply()
-                            val uid = Firebase.auth.currentUser?.uid
-                            if (uid != null) {
-                                Firebase.firestore.collection("users").document(uid)
-                                    .update("points", com.google.firebase.firestore.FieldValue.increment(pointsEarned.toLong()))
-                                    .addOnSuccessListener {
-                                        Toast.makeText(context, "Earned $pointsEarned points!",Toast.LENGTH_SHORT).show()
-                                    }
-                                val logData = hashMapOf(
-                                    "title" to "Completed Quiz",
-                                    "amount" to pointsEarned,
-                                    "date" to System.currentTimeMillis()
-                                )
-                                Firebase.firestore.collection("users").document(uid)
-                                    .collection("logs").add(logData)
-                            }
-
-
-                            currentScreen = "scanner"
-                        },
-                            onNavigateBack = {currentScreen = "scanner"}
-                        )
-                }
-                currentScreen == "rewards" -> RewardScreen(userPoints = userPoints)
-                currentScreen == "logs" -> LogsScreen()
+        NavHost(
+            navController = navController,
+            startDestination = "scanner",
+            modifier = Modifier.padding(paddingValues)
+        ) {
+            composable("scanner") {
+                Scanner(
+                    classifier = classifier,
+                    points = userPoints,
+                    triggerCamera = triggerCamera,
+                    onCameraTriggered = {triggerCamera = false},
+                    onNavigateToGuideDetail = { guideId ->
+                        navController.navigate("guideDetail_$guideId")
+                    }
+                )
             }
-        }
+            composable("profile") {
+                ProfileScreen(onLogout = onLogout)
+            }
+            composable("guides") {
+                GuidesListScreen(onGuideClick = { guideId ->
+                    navController.navigate( "guideDetail_$guideId")
+                })
+            }
+            composable("guideDetail_{guideId}") { backStackEntry ->
+                val id = backStackEntry.arguments?.getString("guideId") ?: return@composable
+                GuideDetailScreen(guideId = id.lowercase())
+            }
+            composable("quiz"){
+                val context = LocalContext.current
+                QuizScreen(
+                    onQuizComplete = {pointsEarned ->
+                        val sharedPrefs = context.getSharedPreferences("SmartWastePrefs", Context.MODE_PRIVATE)
+                        val currentDate = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+                        sharedPrefs.edit().putString("lastQuizDate", currentDate).apply()
+                        val uid = Firebase.auth.currentUser?.uid
+                        if (uid != null) {
+                            Firebase.firestore.collection("users").document(uid)
+                                .update("points", com.google.firebase.firestore.FieldValue.increment(pointsEarned.toLong()))
+                                .addOnSuccessListener {
+                                    Toast.makeText(context, "Earned $pointsEarned points!",Toast.LENGTH_SHORT).show()
+                                }
+                            val logData = hashMapOf(
+                                "title" to "Completed Quiz",
+                                "amount" to pointsEarned,
+                                "date" to System.currentTimeMillis()
+                            )
+                            Firebase.firestore.collection("users").document(uid)
+                                .collection("logs").add(logData)
+                        }
 
+
+                        navController.navigate("scanner"){
+                            popUpTo(navController.graph.findStartDestination().id) {inclusive = true}
+                        }
+                    },
+                        onNavigateBack = {navController.navigateUp()}
+                    )
+            }
+            composable("rewards"){RewardScreen(userPoints = userPoints)}
+            composable("logs") { LogsScreen() }
+        }
     }
 }
 
@@ -561,7 +590,7 @@ fun Scanner(
                             },
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(end=8.dp),
+                                .padding(end = 8.dp),
                             colors= ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF2E7D32)),
                             border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2E7D32)),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
@@ -581,7 +610,7 @@ fun Scanner(
                             },
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(start=8.dp),
+                                .padding(start = 8.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = Color(0xFF2E7D32),
                                 contentColor = Color.White
@@ -830,7 +859,7 @@ fun StaffDashBoard(onLogout: () -> Unit) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom= 8.dp),
+                    .padding(bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -903,7 +932,9 @@ fun StaffDashBoard(onLogout: () -> Unit) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     itemsIndexed(sortedCriticalBins) {index, bin ->
@@ -1036,7 +1067,12 @@ fun AnimatedPointsBadge(currentPoints: Int){
     Box(
         modifier = Modifier
             .size(240.dp)
-            .shadow(16.dp, CircleShape, ambientColor = Color(0xFF2E7D32), spotColor= Color(0xFF2E7D32)),
+            .shadow(
+                16.dp,
+                CircleShape,
+                ambientColor = Color(0xFF2E7D32),
+                spotColor = Color(0xFF2E7D32)
+            ),
         contentAlignment = Alignment.Center
     ){
         if (trashAlpha.value >0f) {
