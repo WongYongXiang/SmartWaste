@@ -28,8 +28,12 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
     var isQuizFinished by remember {mutableStateOf(false)}
     var showExitDialog by remember {mutableStateOf(false)} // in case the user want to use back button to quit
 
-    BackHandler(enabled = !isQuizFinished) {
+    BackHandler{
+        if (isQuizFinished){
+            onQuizComplete(score*20)
+        } else {
         showExitDialog = true
+        }
     }
 
     if (showExitDialog){
@@ -108,11 +112,19 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
         } else {
             val currentQuestion = questions[currentQuestionsIndex]
 
+            //Scamble the qns up
+            val (shuffledOptions, newCorrectIndex) = remember(currentQuestionsIndex) {
+                val correctOptionText = currentQuestion.options[currentQuestion.correctAnswerIndex]
+                val shuffled = currentQuestion.options.shuffled()
+                val updatedIndex = shuffled.indexOf(correctOptionText)
+                Pair(shuffled, updatedIndex)
+            }
+
             Text(
                 text = "Question ${currentQuestionsIndex +1} of 5",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFFAFCFA),
+                color = Color(0xFF1B5E20),
                 modifier = Modifier.align(Alignment.Start)
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -126,9 +138,9 @@ fun QuizScreen(onQuizComplete: (Int) -> Unit, onNavigateBack: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(40.dp))
 
-            currentQuestion.options.forEachIndexed { index, optionText ->
+            shuffledOptions.forEachIndexed { index, optionText ->
                 val isSelected = selectedAnswerIndex == index
-                val isCorrect = index == currentQuestion.correctAnswerIndex
+                val isCorrect = index == newCorrectIndex
 
                 val buttonColor = if (showExplanation) {
                     when {
