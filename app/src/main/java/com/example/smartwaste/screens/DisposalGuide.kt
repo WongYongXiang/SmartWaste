@@ -262,13 +262,14 @@ fun FoodGuideContent(){
         Spacer(modifier = Modifier.height(8.dp))
         Text("How to Dispose", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1B5E20))
 
-        StepItem("1","To add")
-        StepItem("2","To add")
+        StepItem("1","Drain excess liquids. Strain wet food, broths, or soups to prevent messy leaks and reduce the weight of your trash")
+        StepItem("2","Remove the packaging. If you are throwing away expired food, empty it out first. Don't throw the plastic container away with the food inside!")
+        StepItem("3","Bag it securely. Tie your plastic bags tightly to keep pests like ants and cockroaches away, and to lock in foul odors")
         Spacer(modifier = Modifier.height(16.dp))
 
         InfoCard(
             title = "Food waste cannot be recycled, don't even think about it!",
-            text = "",
+            text = "Food waste contaminates clean recyclables like paper and plastic",
             isPositive = false
         )
     }
